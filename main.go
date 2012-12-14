@@ -1,8 +1,7 @@
 package main
 
 /*
-#cgo CFLAGS: -pthread -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/gsnmp -I/usr/include/gnet-2.0 -I/usr/lib/gnet-2.0/include/
-#cgo LDFLAGS: -lgsnmp
+#cgo pkg-config: glib-2.0 gsnmp
 
 #include <gsnmp/ber.h>
 #include <gsnmp/pdu.h>
@@ -13,6 +12,7 @@ package main
 #include <gsnmp/transport.h>
 #include <gsnmp/utils.h>
 #include <gsnmp/gsnmp.h>
+
 #include <stdlib.h>
 */
 import "C"
@@ -34,6 +34,7 @@ func main() {
 }
 
 /// cgo CFLAGS: -I/usr/include/glib-2.0
-/// cgo pkg-config --cflags glib-2.0 gsnmp
-/// cgo LDFLAGS: -lgsnmp
+/// cgo pkg-config: --cflags glib-2.0 gsnmp
 /// cgo pkg-config: gsnmp glib-2.0
+/// cgo CFLAGS: -pthread -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/gsnmp -I/usr/include/gnet-2.0 -I/usr/lib/gnet-2.0/include/
+/// cgo LDFLAGS: -lgsnmp

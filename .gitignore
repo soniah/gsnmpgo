@@ -1,0 +1,11 @@
+.*.sw*
+*.tmp
+*.orig
+*.bak
+poller32
+poller64
+*-stamp
+*-dstamp
+*.deb
+nstpomgmt01:*
+gosnmp
