@@ -23,14 +23,13 @@ import (
 )
 
 /*
-glib typedefs - see also http://developer.gnome.org/glib/2.35/glib-Basic-Types.html
+glib typedefs - see http://developer.gnome.org/glib/2.35/glib-Basic-Types.html
+glib tutorial - see http://www.dlhoffman.com/publiclibrary/software/gtk+-html-docs/gtk_tut-17.html
 */
 
 // ParseURI: gnet_snmp_parse_uri
-/*
-GURI*
-gnet_snmp_parse_uri(const gchar *uri_string, GError **error)
-*/
+// GURI*
+// gnet_snmp_parse_uri(const gchar *uri_string, GError **error)
 func ParseURI(uri string) (parsed_uri *_Ctype_GURI) {
 	curi := (*C.gchar)(C.CString(uri))
 	defer C.free(unsafe.Pointer(curi))
@@ -76,13 +75,11 @@ func (parsed_uri *_Ctype_GURI) String() string {
 }
 
 // ParsePath: gnet_snmp_parse_path
-/*
-gboolean
-gnet_snmp_parse_path(const gchar *path,
-		     GList **vbl,
-		     GNetSnmpUriType *type,
-		     GError **error)
-*/
+//    gboolean
+//    gnet_snmp_parse_path(const gchar *path,
+//    		     GList **vbl,
+//    		     GNetSnmpUriType *type,
+//    		     GError **error)
 func ParsePath(parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, _type _Ctype_GNetSnmpUriType, result bool) {
 	path := parsed_uri.path
 	var gerror *C.GError
