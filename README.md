@@ -2,7 +2,7 @@ gsnmp
 ======
 
 * go/cgo wrapper around gsnmp
-* under developement, therefore:
+* under development, therefore:
 * API's may/will change
 * no doco, error handling, etc
 * see dev branch
