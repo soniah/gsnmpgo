@@ -75,6 +75,7 @@ func (parsed_uri *_Ctype_GURI) String() string {
 }
 
 // ParsePath: gnet_snmp_parse_path
+//
 //    gboolean
 //    gnet_snmp_parse_path(const gchar *path,
 //    		     GList **vbl,
@@ -129,7 +130,7 @@ const (
 //     GNET_SNMP_URI_NEXT,
 //     GNET_SNMP_URI_WALK
 // } GNetSnmpUriType;
-func (uritype _Ctype_GNetSnmpUriType) String() (result string) {
+func (uritype _Ctype_GNetSnmpUriType) String() string {
 	switch UriType(uritype) {
 	case GNET_SNMP_URI_GET:
 		return "GNET_SNMP_URI_GET"
