@@ -1,11 +1,14 @@
 gsnmp
 ======
 
-* go/cgo wrapper around gsnmp
-* under development, therefore:
+A go/cgo wrapper around gsnmp.
+
+Under development, therefore:
+
 * API's may/will change
 * no doco, error handling, etc
-* see dev branch
+
+See dev branch for latest commits.
 
 Sonia Hamilton, sonia@snowfrog.net, http://www.snowfrog.net.
 
@@ -15,7 +18,7 @@ Install
 -------
 
 ```shell
-sudo aptitude install #some gsnmp & glib libraries#
+sudo aptitude install #some gsnmp, glib, gnet dev libraries#
 go get github.com/soniah/gsnmp
 ```
 
