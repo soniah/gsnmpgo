@@ -6,7 +6,7 @@ A go/cgo wrapper around gsnmp.
 Under development, therefore:
 
 * API's may/will change
-* no doco, error handling, etc
+* doco, error handling, tests are minimal
 
 See dev branch for latest commits.
 
