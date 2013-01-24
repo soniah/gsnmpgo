@@ -1,23 +1,36 @@
+// enumconv and gsnmp/stringers.go contain stringers for C enums and other
+// types. To help with the generation of the boilerplate code for the C enums,
+// github.com/natefinch/gocog is used. AFTER EDITING any gocog sections
+// (between gocog open and close square brackets), you MUST run:
+//
+//     rm -f stringers.go_cog; $GOPATH/bin/gocog stringers.go
+//
+package enumconv
+
 // Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
-package enumconv
 
 import (
 	"fmt"
 	"strings"
 )
 
-// Write uses gocog to produce Go boilerplate and Stringers for C enums
+// Write uses gocog to produce Go boilerplate and Stringers for C enums.
 //
 // gotypename: the go type name of this C enum
+//
 // ctypename: the C type name of this enum (with "_Ctype_")
+//
 // enums: slice of strings containing names of enums
+//
 // ccode: any C code to be included in Stringer comment header
+//
 // start_at: value to start the enum at
 //
-// if ccode contained the enum typedef, it could be parsed to produce
-// gotypename, ctypename, and enums. But that's overkill for the moment...
+// I decided not to parse the C enum typedefs and instead opted to pass in
+// fields like gotypename and ctypename, as parsing would be overkill for this
+// project.
 //
 func Write(gotypename string, ctypename string, enums []string, ccode string, start_at int) {
 

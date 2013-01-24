@@ -1,7 +1,7 @@
 // gsnmp is a go/cgo wrapper around gsnmp. It is under development,
-// therefor API's may/will change, and doco/error handling/tests are
+// therefore API's may/will change, and doco/error handling/tests are
 // minimal.
-
+//
 package gsnmp
 
 // Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
@@ -42,9 +42,7 @@ import (
 	"unsafe"
 )
 
-// libname returns the name of this library
-//
-// libname is used when generating error messages
+// libname returns the name of this library, for generating error messages.
 //
 func libname() string {
 	return "gsnmp"
@@ -65,11 +63,6 @@ func libname() string {
 //    	os.Exit(1)
 //    }
 //    fmt.Println("ParseURI():", parsed_uri)
-//
-// C:
-//    GURI*
-//    gnet_snmp_parse_uri(const gchar *uri_string, GError **error)
-//
 func ParseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	curi := (*C.gchar)(C.CString(uri))
 	defer C.free(unsafe.Pointer(curi))
@@ -82,24 +75,16 @@ func ParseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	return parsed_uri, nil
 }
 
-// ParsePath: gnet_snmp_parse_path
+// ParsePath parses an SNMP URI.
 //
-// uritype will default to GNET_SNMP_URI_GET. If the uri ends in:
+// The uritype will default to GNET_SNMP_URI_GET. If the uri ends in:
 //
-// * uritype will be GNET_SNMP_URI_WALK
-// + uritype will be GNET_SNMP_URI_NEXT
+// '*' the uritype will be GNET_SNMP_URI_WALK
+//
+// '+' the uritype will be GNET_SNMP_URI_NEXT
 //
 // See RFC 4088 "Uniform Resource Identifier (URI) Scheme for the Simple
 // Network Management Protocol (SNMP)" for further documentation.
-//
-// C:
-//    gsnmp-0.3.0/src/utils.c
-//    gboolean
-//    gnet_snmp_parse_path(const gchar *path,
-//    		     GList **vbl,
-//    		     GNetSnmpUriType *type,
-//    		     GError **error)
-//
 func ParsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
 	var gerror *C.GError
 	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
@@ -110,21 +95,15 @@ func ParsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype 
 	return vbl, uritype, nil
 }
 
-// UriDelete frees the memory used by a parsed_uri
+// UriDelete frees the memory used by a parsed_uri.
 //
-// A defered call to UriDelete should be made after ParsePath()
+// A defered call to UriDelete should be made after ParsePath().
 //
 func UriDelete(parsed_uri *_Ctype_GURI) {
 	C.gnet_uri_delete(parsed_uri)
 }
 
-// NewUri creates a session from a parsed uri
-//
-// C:
-//     gsnmp-0.3.0/src/session.c
-//     GNetSnmp*
-//     gnet_snmp_new_uri(const GURI *uri, GError **error)
-//
+// NewUri creates a session from a parsed uri.
 func NewUri(uri string, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
 	var gerror *C.GError
 	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
@@ -143,8 +122,10 @@ func NewUri(uri string, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err 
 	return session, nil
 }
 
-// return results in C form, use another function to convert Glist
-// to a Go struct
+// Get does an SNMP get.
+//
+// It returns it results in C form, another function will convert the returned
+// Glist to a Go struct.
 func Get(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
 	var gerror *C.GError
 	out := C.gnet_snmp_sync_get(session, vbl, &gerror)

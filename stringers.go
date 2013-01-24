@@ -3,14 +3,6 @@ package gsnmp
 // Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
-//
-// stringers.go contains stringers for C enums and other types. To help with
-// the generation of the boilerplate code for the C enums,
-// github.com/natefinch/gocog is used. AFTER EDITING any gocog sections
-// (between gocog open and close square brackets), you MUST run:
-//
-// rm -f stringers.go_cog; $GOPATH/bin/gocog stringers.go
-//
 
 /*
 #cgo pkg-config: glib-2.0 gsnmp
@@ -67,17 +59,7 @@ import (
 	"unsafe"
 )
 
-// returns a string represention of OIDs in vbl (var bind list)
-//
-// C:
-//     /usr/include/glib-2.0/glib/glist.h
-//     typedef struct _GList GList;
-//     struct _GList
-//     {
-// 	       gpointer data;
-// 	       GList *next;
-// 	       GList *prev;
-//     };
+// OidToString returns the string represention of the OIDs in a GList
 func OidToString(vbl *_Ctype_GList) string {
 	// allocate "char result[MAX_OIDS_STR_LEN]"
 	const MAX_OIDS_STR_LEN = 1000 // same as C code define
