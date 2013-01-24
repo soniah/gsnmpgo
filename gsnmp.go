@@ -1,7 +1,9 @@
 // gsnmp is a go/cgo wrapper around gsnmp. It is under development,
 // therefor API's may/will change, and doco/error handling/tests are
 // minimal.
-//
+
+package gsnmp
+
 // Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
@@ -9,8 +11,6 @@
 // glib typedefs - http://developer.gnome.org/glib/2.35/glib-Basic-Types.html
 // glib tutorial - http://www.dlhoffman.com/publiclibrary/software/gtk+-html-docs/gtk_tut-17.html
 // gsnmp sourcecode browser - http://sourcecodebrowser.com/gsnmp/0.3.0/index.html
-//
-package gsnmp
 
 /*
 #cgo pkg-config: glib-2.0 gsnmp
@@ -27,6 +27,13 @@ package gsnmp
 
 #include <stdlib.h>
 #include <stdio.h>
+
+// convenience wrapper for gnet_snmp_enum_get_label()
+gchar const *
+get_err_label(gint32 const id) {
+	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
+}
+
 */
 import "C"
 
@@ -37,7 +44,7 @@ import (
 
 // libname returns the name of this library
 //
-// libname is used for generating error messages
+// libname is used when generating error messages
 //
 func libname() string {
 	return "gsnmp"
@@ -111,22 +118,49 @@ func UriDelete(parsed_uri *_Ctype_GURI) {
 	C.gnet_uri_delete(parsed_uri)
 }
 
-// SnmpNewUri creates a session from a parsed uri
+// NewUri creates a session from a parsed uri
 //
 // C:
 //     gsnmp-0.3.0/src/session.c
 //     GNetSnmp*
 //     gnet_snmp_new_uri(const GURI *uri, GError **error)
 //
-func SnmpNewUri(uri string, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
+func NewUri(uri string, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
 	var gerror *C.GError
 	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
+
+	// error handling
 	if gerror != nil {
 		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
 		return session, fmt.Errorf("%s: %s", libname(), err_string)
 	}
 	if session == nil {
 		return session, fmt.Errorf("%s: unable to create session", libname())
 	}
+
+	// results
 	return session, nil
+}
+
+// return results in C form, use another function to convert Glist
+// to a Go struct
+func Get(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
+	var gerror *C.GError
+	out := C.gnet_snmp_sync_get(session, vbl, &gerror)
+
+	// error handling
+	if gerror != nil {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
+		return out, fmt.Errorf("%s: %s", libname(), err_string)
+	}
+	if PduError(session.error_status) != GNET_SNMP_PDU_ERR_NOERROR {
+		es := C.get_err_label(session.error_status)
+		err_string := C.GoString((*_Ctype_char)(es))
+		return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
+	}
+
+	// results
+	return out, nil
 }

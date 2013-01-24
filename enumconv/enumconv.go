@@ -11,11 +11,15 @@ import (
 // Write uses gocog to produce Go boilerplate and Stringers for C enums
 //
 // gotypename: the go type name of this C enum
-// ctypename: the C type name of this enum (without "_Ctype_")
+// ctypename: the C type name of this enum (with "_Ctype_")
 // enums: slice of strings containing names of enums
 // ccode: any C code to be included in Stringer comment header
+// start_at: value to start the enum at
 //
-func Write(gotypename string, ctypename string, enums []string, ccode string) {
+// if ccode contained the enum typedef, it could be parsed to produce
+// gotypename, ctypename, and enums. But that's overkill for the moment...
+//
+func Write(gotypename string, ctypename string, enums []string, ccode string, start_at int) {
 
 	// type
 	fmt.Printf("\n// type and values for %s\n//\n", ctypename)
@@ -26,7 +30,11 @@ func Write(gotypename string, ctypename string, enums []string, ccode string) {
 	fmt.Println("const (")
 	for i, enum := range enums {
 		if i == 0 {
-			fmt.Printf("	%s %s = iota\n", enum, gotypename)
+		  if start_at == 0 {
+				fmt.Printf("	%s %s = iota\n", enum, gotypename)
+			} else {
+				fmt.Printf("	%s %s = iota %+d\n", enum, gotypename, start_at)
+			}
 		} else {
 			fmt.Printf("	%s\n", enum)
 		}
@@ -45,7 +53,7 @@ func Write(gotypename string, ctypename string, enums []string, ccode string) {
 	fmt.Println("//")
 
 	// start stringer function
-	fmt.Printf("func (%s %s) String() string {\n", strings.ToLower(gotypename), "_Ctype_" + ctypename)
+	fmt.Printf("func (%s %s) String() string {\n", strings.ToLower(gotypename), ctypename)
 
 	// switch statement
 	fmt.Printf("	switch %s(%s) {\n", gotypename, strings.ToLower(gotypename))
@@ -58,7 +66,4 @@ func Write(gotypename string, ctypename string, enums []string, ccode string) {
 
 	// end stringer function
 	fmt.Println("}")
-
-	// for line before [[[end]]]
-	//fmt.Println()
 }

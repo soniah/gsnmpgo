@@ -1,3 +1,5 @@
+package gsnmp
+
 // Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
@@ -5,8 +7,6 @@
 // TODO some of these tests are hardcoded against public@192.168.1.10
 // How to make the tests more generic; writing mocks for snmp would be
 // timeconsuming and painful. Packet captures??
-
-package gsnmp
 
 import (
 	"testing"

@@ -1,16 +1,16 @@
+package gsnmp
+
 // Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
 //
-// stringers.go contains stringers for C enums and other types. To help with the
-// generation of the boilerplate code, github.com/natefinch/gocog is used.
-//
-// AFTER EDITING any gocog sections (between gocog open and close square
-// brackets), you MUST run:
+// stringers.go contains stringers for C enums and other types. To help with
+// the generation of the boilerplate code for the C enums,
+// github.com/natefinch/gocog is used. AFTER EDITING any gocog sections
+// (between gocog open and close square brackets), you MUST run:
 //
 // rm -f stringers.go_cog; $GOPATH/bin/gocog stringers.go
 //
-package gsnmp
 
 /*
 #cgo pkg-config: glib-2.0 gsnmp
@@ -129,37 +129,6 @@ func (parsed_uri *_Ctype_GURI) String() string {
 	return result
 }
 
-// type and values for GNetSnmpUriType
-type UriType int
-
-const (
-	GNET_SNMP_URI_GET UriType = iota
-	GNET_SNMP_URI_NEXT
-	GNET_SNMP_URI_WALK
-)
-
-// Stringer for _Ctype_GNetSnmpUriType
-//
-//    /usr/include/gsnmp/utils.h
-//    typedef enum
-//    {
-//        GNET_SNMP_URI_GET,
-//        GNET_SNMP_URI_NEXT,
-//        GNET_SNMP_URI_WALK
-//    } GNetSnmpUriType;
-//
-func (uritype _Ctype_GNetSnmpUriType) String() string {
-	switch UriType(uritype) {
-	case GNET_SNMP_URI_GET:
-		return "GNET_SNMP_URI_GET"
-	case GNET_SNMP_URI_NEXT:
-		return "GNET_SNMP_URI_NEXT"
-	case GNET_SNMP_URI_WALK:
-		return "GNET_SNMP_URI_WALK"
-	}
-	return "UNKNOWN GNetSnmpUriType"
-}
-
 // Stringer for GString
 //
 //     glib/gstring.h
@@ -206,22 +175,96 @@ func (s *_Ctype_GNetSnmp) String() string {
 	version := strconv.Itoa(int(s.version))
 
 	result := "{"
-	result += "taddress: TODO "
+	result += "taddress:" + fmt.Sprintf("%s", s.taddress) + " "
 	result += "uri:" + fmt.Sprintf("%s", s.uri) + " "
 	result += "error_status:" + error_status + " "
 	result += "error_index:" + error_index + " "
 	result += "retries:" + retries + " "
+	// TODO need function to set version on session
 	result += "version:" + version + " "
 	result += "context_name:" + fmt.Sprintf("%s", s.ctxt_name) + " "
 	result += "security_name:" + fmt.Sprintf("%s", s.sec_name) + " "
 	result += "security_model:" + fmt.Sprintf("%s", s.sec_model) + " "
 	result += "security_level:" + fmt.Sprintf("%s", s.sec_level) + " "
-	result += "done_callback: TODO "
+	result += "done_callback:UNIMPLEMENTED"
 	result += "}"
 	return result
 }
 
-// type and values for GNetSnmpSecModel
+// Stringer for *_Ctype_GNetSnmpTAddress
+//
+// Example:
+//    fmt.Printf("GNetSnmpTAddress: %s", taddress)
+//
+// C:
+//     gsnmp-0.3.0/src/transport.h
+//     typedef struct {
+//         GNetSnmpTDomain domain;
+//         union {
+//             GInetAddr *inetaddr;
+//             gchar     *path;
+//         };
+//     } GNetSnmpTAddress;
+func (t *_Ctype_GNetSnmpTAddress) String() string {
+	name := C.gnet_snmp_taddress_get_short_name(t)
+	return C.GoString((*_Ctype_char)(name))
+}
+
+///////////
+// enums //
+///////////
+
+/*[[[gocog
+package main
+import ("github.com/soniah/gsnmp/enumconv")
+func main() {
+	ccode := "/usr/include/gsnmp/utils.h"
+	vals := []string{"GNET_SNMP_URI_GET", "GNET_SNMP_URI_NEXT", "GNET_SNMP_URI_WALK"}
+	enumconv.Write("UriType", "_Ctype_GNetSnmpUriType", vals, ccode, 0)
+}
+gocog]]]*/
+
+// type and values for _Ctype_GNetSnmpUriType
+//
+type UriType int
+
+const (
+	GNET_SNMP_URI_GET UriType = iota
+	GNET_SNMP_URI_NEXT
+	GNET_SNMP_URI_WALK
+)
+
+// Stringer for _Ctype_GNetSnmpUriType
+//
+// C:
+//    /usr/include/gsnmp/utils.h
+//
+func (uritype _Ctype_GNetSnmpUriType) String() string {
+	switch UriType(uritype) {
+	case GNET_SNMP_URI_GET:
+		return "GNET_SNMP_URI_GET"
+	case GNET_SNMP_URI_NEXT:
+		return "GNET_SNMP_URI_NEXT"
+	case GNET_SNMP_URI_WALK:
+		return "GNET_SNMP_URI_WALK"
+	}
+	return "UNKNOWN _Ctype_GNetSnmpUriType"
+}
+
+//[[[end]]]
+
+/*[[[gocog
+package main
+import ("github.com/soniah/gsnmp/enumconv")
+func main() {
+	ccode := "gsnmp-0.3.0/src/security.h"
+	vals := []string{"GNET_SNMP_SECMODEL_ANY", "GNET_SNMP_SECMODEL_SNMPV1", "GNET_SNMP_SECMODEL_SNMPV2C", "GNET_SNMP_SECMODEL_SNMPV3"}
+	enumconv.Write("SecModel", "_Ctype_GNetSnmpSecModel", vals, ccode, 0)
+}
+gocog]]]*/
+
+// type and values for _Ctype_GNetSnmpSecModel
+//
 type SecModel int
 
 const (
@@ -231,16 +274,10 @@ const (
 	GNET_SNMP_SECMODEL_SNMPV3
 )
 
-// Stringer for GNetSnmpSecModel
+// Stringer for _Ctype_GNetSnmpSecModel
 //
 // C:
 //    gsnmp-0.3.0/src/security.h
-//    typedef enum {
-//        GNET_SNMP_SECMODEL_ANY	= 0,
-//        GNET_SNMP_SECMODEL_SNMPV1	= 1,
-//        GNET_SNMP_SECMODEL_SNMPV2C	= 2,
-//        GNET_SNMP_SECMODEL_SNMPV3	= 3
-//    } GNetSnmpSecModel;
 //
 func (secmodel _Ctype_GNetSnmpSecModel) String() string {
 	switch SecModel(secmodel) {
@@ -253,27 +290,22 @@ func (secmodel _Ctype_GNetSnmpSecModel) String() string {
 	case GNET_SNMP_SECMODEL_SNMPV3:
 		return "GNET_SNMP_SECMODEL_SNMPV3"
 	}
-	return "UNKNOWN GNetSnmpSecModel"
+	return "UNKNOWN _Ctype_GNetSnmpSecModel"
 }
+
+//[[[end]]]
 
 /*[[[gocog
 package main
 import ("github.com/soniah/gsnmp/enumconv")
 func main() {
-
-	ccode := `gsnmp-0.3.0/src/security.h
-typedef enum {
-    GNET_SNMP_SECLEVEL_NANP	= 0,
-    GNET_SNMP_SECLEVEL_ANP	= 1,
-    GNET_SNMP_SECLEVEL_AP	= 2
-} GNetSnmpSecLevel;`
-
+	ccode := "gsnmp-0.3.0/src/security.h"
 	vals := []string{"GNET_SNMP_SECLEVEL_NANP", "GNET_SNMP_SECLEVEL_ANP", "GNET_SNMP_SECLEVEL_AP"}
-	enumconv.Write("SecLevel", "GNetSnmpSecLevel", vals, ccode)
+	enumconv.Write("SecLevel", "_Ctype_GNetSnmpSecLevel", vals, ccode, 0)
 }
 gocog]]]*/
 
-// type and values for GNetSnmpSecLevel
+// type and values for _Ctype_GNetSnmpSecLevel
 //
 type SecLevel int
 
@@ -283,15 +315,10 @@ const (
 	GNET_SNMP_SECLEVEL_AP
 )
 
-// Stringer for GNetSnmpSecLevel
+// Stringer for _Ctype_GNetSnmpSecLevel
 //
 // C:
 //    gsnmp-0.3.0/src/security.h
-//    typedef enum {
-//        GNET_SNMP_SECLEVEL_NANP	= 0,
-//        GNET_SNMP_SECLEVEL_ANP	= 1,
-//        GNET_SNMP_SECLEVEL_AP	= 2
-//    } GNetSnmpSecLevel;
 //
 func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
 	switch SecLevel(seclevel) {
@@ -302,6 +329,110 @@ func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
 	case GNET_SNMP_SECLEVEL_AP:
 		return "GNET_SNMP_SECLEVEL_AP"
 	}
-	return "UNKNOWN GNetSnmpSecLevel"
+	return "UNKNOWN _Ctype_GNetSnmpSecLevel"
 }
+
+//[[[end]]]
+
+//
+// GNetSnmp.error_status has type gint32, not GNetSnmpPduError <sigh>
+//
+
+/*[[[gocog
+package main
+import ("github.com/soniah/gsnmp/enumconv")
+uunc main() {
+	ccode := "gsnmp-0.3.0/src/pdu.h"
+	vals := []string{"GNET_SNMP_PDU_ERR_DONE", "GNET_SNMP_PDU_ERR_PROCEDURE", "GNET_SNMP_PDU_ERR_INTERNAL", "GNET_SNMP_PDU_ERR_NORESPONSE", "GNET_SNMP_PDU_ERR_NOERROR", "GNET_SNMP_PDU_ERR_TOOBIG", "GNET_SNMP_PDU_ERR_NOSUCHNAME", "GNET_SNMP_PDU_ERR_BADVALUE", "GNET_SNMP_PDU_ERR_READONLY", "GNET_SNMP_PDU_ERR_GENERROR", "GNET_SNMP_PDU_ERR_NOACCESS", "GNET_SNMP_PDU_ERR_WRONGTYPE", "GNET_SNMP_PDU_ERR_WRONGLENGTH", "GNET_SNMP_PDU_ERR_WRONGENCODING", "GNET_SNMP_PDU_ERR_WRONGVALUE", "GNET_SNMP_PDU_ERR_NOCREATION", "GNET_SNMP_PDU_ERR_INCONSISTENTVALUE", "GNET_SNMP_PDU_ERR_RESOURCEUNAVAILABLE", "GNET_SNMP_PDU_ERR_COMMITFAILED", "GNET_SNMP_PDU_ERR_UNDOFAILED", "GNET_SNMP_PDU_ERR_AUTHORIZATIONERROR", "GNET_SNMP_PDU_ERR_NOTWRITABLE", "GNET_SNMP_PDU_ERR_INCONSISTENTNAME"}
+	enumconv.Write("PduError", "_Ctype_gint32", vals, ccode, -4)
+}
+gocog]]]*/
+
+// type and values for _Ctype_gint32
+//
+type PduError int
+
+const (
+	GNET_SNMP_PDU_ERR_DONE PduError = iota - 4
+	GNET_SNMP_PDU_ERR_PROCEDURE
+	GNET_SNMP_PDU_ERR_INTERNAL
+	GNET_SNMP_PDU_ERR_NORESPONSE
+	GNET_SNMP_PDU_ERR_NOERROR
+	GNET_SNMP_PDU_ERR_TOOBIG
+	GNET_SNMP_PDU_ERR_NOSUCHNAME
+	GNET_SNMP_PDU_ERR_BADVALUE
+	GNET_SNMP_PDU_ERR_READONLY
+	GNET_SNMP_PDU_ERR_GENERROR
+	GNET_SNMP_PDU_ERR_NOACCESS
+	GNET_SNMP_PDU_ERR_WRONGTYPE
+	GNET_SNMP_PDU_ERR_WRONGLENGTH
+	GNET_SNMP_PDU_ERR_WRONGENCODING
+	GNET_SNMP_PDU_ERR_WRONGVALUE
+	GNET_SNMP_PDU_ERR_NOCREATION
+	GNET_SNMP_PDU_ERR_INCONSISTENTVALUE
+	GNET_SNMP_PDU_ERR_RESOURCEUNAVAILABLE
+	GNET_SNMP_PDU_ERR_COMMITFAILED
+	GNET_SNMP_PDU_ERR_UNDOFAILED
+	GNET_SNMP_PDU_ERR_AUTHORIZATIONERROR
+	GNET_SNMP_PDU_ERR_NOTWRITABLE
+	GNET_SNMP_PDU_ERR_INCONSISTENTNAME
+)
+
+// Stringer for _Ctype_gint32
+//
+// C:
+//    gsnmp-0.3.0/src/pdu.h
+//
+func (pduerror _Ctype_gint32) String() string {
+	switch PduError(pduerror) {
+	case GNET_SNMP_PDU_ERR_DONE:
+		return "GNET_SNMP_PDU_ERR_DONE"
+	case GNET_SNMP_PDU_ERR_PROCEDURE:
+		return "GNET_SNMP_PDU_ERR_PROCEDURE"
+	case GNET_SNMP_PDU_ERR_INTERNAL:
+		return "GNET_SNMP_PDU_ERR_INTERNAL"
+	case GNET_SNMP_PDU_ERR_NORESPONSE:
+		return "GNET_SNMP_PDU_ERR_NORESPONSE"
+	case GNET_SNMP_PDU_ERR_NOERROR:
+		return "GNET_SNMP_PDU_ERR_NOERROR"
+	case GNET_SNMP_PDU_ERR_TOOBIG:
+		return "GNET_SNMP_PDU_ERR_TOOBIG"
+	case GNET_SNMP_PDU_ERR_NOSUCHNAME:
+		return "GNET_SNMP_PDU_ERR_NOSUCHNAME"
+	case GNET_SNMP_PDU_ERR_BADVALUE:
+		return "GNET_SNMP_PDU_ERR_BADVALUE"
+	case GNET_SNMP_PDU_ERR_READONLY:
+		return "GNET_SNMP_PDU_ERR_READONLY"
+	case GNET_SNMP_PDU_ERR_GENERROR:
+		return "GNET_SNMP_PDU_ERR_GENERROR"
+	case GNET_SNMP_PDU_ERR_NOACCESS:
+		return "GNET_SNMP_PDU_ERR_NOACCESS"
+	case GNET_SNMP_PDU_ERR_WRONGTYPE:
+		return "GNET_SNMP_PDU_ERR_WRONGTYPE"
+	case GNET_SNMP_PDU_ERR_WRONGLENGTH:
+		return "GNET_SNMP_PDU_ERR_WRONGLENGTH"
+	case GNET_SNMP_PDU_ERR_WRONGENCODING:
+		return "GNET_SNMP_PDU_ERR_WRONGENCODING"
+	case GNET_SNMP_PDU_ERR_WRONGVALUE:
+		return "GNET_SNMP_PDU_ERR_WRONGVALUE"
+	case GNET_SNMP_PDU_ERR_NOCREATION:
+		return "GNET_SNMP_PDU_ERR_NOCREATION"
+	case GNET_SNMP_PDU_ERR_INCONSISTENTVALUE:
+		return "GNET_SNMP_PDU_ERR_INCONSISTENTVALUE"
+	case GNET_SNMP_PDU_ERR_RESOURCEUNAVAILABLE:
+		return "GNET_SNMP_PDU_ERR_RESOURCEUNAVAILABLE"
+	case GNET_SNMP_PDU_ERR_COMMITFAILED:
+		return "GNET_SNMP_PDU_ERR_COMMITFAILED"
+	case GNET_SNMP_PDU_ERR_UNDOFAILED:
+		return "GNET_SNMP_PDU_ERR_UNDOFAILED"
+	case GNET_SNMP_PDU_ERR_AUTHORIZATIONERROR:
+		return "GNET_SNMP_PDU_ERR_AUTHORIZATIONERROR"
+	case GNET_SNMP_PDU_ERR_NOTWRITABLE:
+		return "GNET_SNMP_PDU_ERR_NOTWRITABLE"
+	case GNET_SNMP_PDU_ERR_INCONSISTENTNAME:
+		return "GNET_SNMP_PDU_ERR_INCONSISTENTNAME"
+	}
+	return "UNKNOWN _Ctype_gint32"
+}
+
 //[[[end]]]
