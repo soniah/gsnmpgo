@@ -3,23 +3,10 @@
 //
 package gsnmp
 
-// gsnmp is a Go wrapper around the C gsnmp library.
-//
-// Copyright (C) 2013 Sonia Hamilton sonia@snowfrog.get.
-//
-// gsnmp is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// gsnmp is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser Public License for more details.
-//
-// You should have received a copy of the GNU Lesser Public License
-// along with gsnmp.  If not, see <http://www.gnu.org/licenses/>.
-//
+// Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
+// reserved.  Use of this source code is governed by a 3-clause BSD
+// license that can be found in the LICENSE file.
+
 // glib typedefs - http://developer.gnome.org/glib/2.35/glib-Basic-Types.html
 // glib tutorial - http://www.dlhoffman.com/publiclibrary/software/gtk+-html-docs/gtk_tut-17.html
 // gsnmp sourcecode browser - http://sourcecodebrowser.com/gsnmp/0.3.0/index.html

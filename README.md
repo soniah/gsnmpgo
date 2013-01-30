@@ -25,5 +25,6 @@ go get github.com/soniah/gsnmp
 License
 -------
 
-See the COPYING & COPYING.LESSER files for more details. The code is under a
-LGPL license.
+Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
+reserved.  Use of this source code is governed by a 3-clause BSD
+license that can be found in the LICENSE file.
