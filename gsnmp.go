@@ -1,12 +1,24 @@
-// gsnmp is a go/cgo wrapper around gsnmp. It is under development,
-// therefore API's may/will change, and doco/error handling/tests are
-// minimal.
+// Package gsnmp is a go/cgo wrapper around gsnmp. It is under development,
+// therefore API's may/will change, and doco/error handling/tests are minimal.
 //
 package gsnmp
 
-// Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
-// reserved.  Use of this source code is governed by a BSD-style license
-// that can be found in the LICENSE file.
+// gsnmp is a Go wrapper around the C gsnmp library.
+//
+// Copyright (C) 2013 Sonia Hamilton sonia@snowfrog.get.
+//
+// gsnmp is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// gsnmp is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser Public License for more details.
+//
+// You should have received a copy of the GNU Lesser Public License
+// along with gsnmp.  If not, see <http://www.gnu.org/licenses/>.
 //
 // glib typedefs - http://developer.gnome.org/glib/2.35/glib-Basic-Types.html
 // glib tutorial - http://www.dlhoffman.com/publiclibrary/software/gtk+-html-docs/gtk_tut-17.html
@@ -34,13 +46,22 @@ get_err_label(gint32 const id) {
 	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
 }
 
+// guint32 const *
+// union_guint32_star(gpointer data) {
+// 	GNetSnmpVarBind *vb = (GNetSnmpVarBind *) data;
+// 	return vb->value.ui32v;
+// }
+
 */
 import "C"
 
 import (
 	"fmt"
+	"reflect"
 	"unsafe"
 )
+
+var _ = reflect.DeepEqual(0, 1) // dummy
 
 // libname returns the name of this library, for generating error messages.
 //
@@ -144,4 +165,56 @@ func Get(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
 
 	// results
 	return out, nil
+}
+
+func Dump(out *_Ctype_GList) {
+	var result string
+	for {
+		if out == nil {
+			fmt.Printf("result:\n%s", result)
+			return
+		}
+		data := (*C.GNetSnmpVarBind)(out.data) // gsnmp._Ctype_gpointer -> *gsnmp._Ctype_GNetSnmpVarBind
+		oid := OidArrayToString(data.oid, data.oid_len)
+		result += oid + ":"
+		result += fmt.Sprintf("%s", data._type) + ":"
+
+		switch VarBindType(data._type) {
+
+		case GNET_SNMP_VARBIND_TYPE_NULL:
+
+		case GNET_SNMP_VARBIND_TYPE_OCTETSTRING:
+			result += union_to_string(data.value)
+
+		case GNET_SNMP_VARBIND_TYPE_OBJECTID:
+			guint32_ptr := union_to_guint32_ptr(data.value)
+			result += OidArrayToString(guint32_ptr, data.value_len)
+
+		case GNET_SNMP_VARBIND_TYPE_IPADDRESS:
+
+		case GNET_SNMP_VARBIND_TYPE_INTEGER32:
+
+		case GNET_SNMP_VARBIND_TYPE_UNSIGNED32:
+
+		case GNET_SNMP_VARBIND_TYPE_COUNTER32:
+
+		case GNET_SNMP_VARBIND_TYPE_TIMETICKS:
+
+		case GNET_SNMP_VARBIND_TYPE_OPAQUE:
+
+		case GNET_SNMP_VARBIND_TYPE_COUNTER64:
+
+		case GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT:
+
+		case GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE:
+
+		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
+
+		}
+
+		// move on to next element in list
+		result += "\n"
+		out = out.next
+	}
+	panic(fmt.Sprintf("%s: Dump(): fell out of for loop", libname()))
 }

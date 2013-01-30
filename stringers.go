@@ -1,8 +1,21 @@
 package gsnmp
 
-// Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
-// reserved.  Use of this source code is governed by a BSD-style license
-// that can be found in the LICENSE file.
+// gsnmp is a Go wrapper around the C gsnmp library.
+//
+// Copyright (C) 2013 Sonia Hamilton sonia@snowfrog.get.
+//
+// gsnmp is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// gsnmp is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser Public License for more details.
+//
+// You should have received a copy of the GNU Lesser Public License
+// along with gsnmp.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 #cgo pkg-config: glib-2.0 gsnmp
@@ -22,7 +35,7 @@ package gsnmp
 #define MAX_OIDS_STR_LEN 1000
 
 static void
-oid_to_str(GList *list, char result[MAX_OIDS_STR_LEN]) {
+oids_to_string(GList *list, char result[MAX_OIDS_STR_LEN]) {
 	result[0] = '\0';
 	while (list) {
 		// assume an oid isn't longer than 200 characters
@@ -54,10 +67,55 @@ oid_to_str(GList *list, char result[MAX_OIDS_STR_LEN]) {
 import "C"
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"unsafe"
 )
+
+// OidArrayToString converts an oid from C array of guint32's to a Go string
+func OidArrayToString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string) {
+	size := int(unsafe.Sizeof(oid))
+	length := int(oid_len)
+	gbytes := C.GoBytes(unsafe.Pointer(oid), (_Ctype_int)(size*length))
+
+	buf := bytes.NewBuffer(gbytes)
+	for i := 0; i < length; i++ {
+		var out uint32
+		if err := binary.Read(buf, binary.LittleEndian, &out); err == nil {
+			result = result + fmt.Sprintf(".%d", out)
+		} else {
+			return "<error converting oid>"
+		}
+	}
+	return result[1:]
+}
+
+// OidArrayToString2 converts an oid from 
+// func OidArrayToString2(oid [8]byte) (result string) {
+// 	// size := int(unsafe.Sizeof(oid))
+// 	length := int(oid_len)
+// 	// gbytes := C.GoBytes(unsafe.Pointer(oid), (_Ctype_int)(size*length))
+// 
+// 	// copy array into slice. TODO - better way?
+// 	var gbytes []byte
+// 	for i := 0; i < 8; i++ {
+// 		gbytes = append(gbytes, oid[i])
+// 
+// 	}
+// 
+// 	buf := bytes.NewBuffer(gbytes)
+// 	for i := 0; i < length; i++ {
+// 		var out uint32
+// 		if err := binary.Read(buf, binary.LittleEndian, &out); err == nil {
+// 			result = result + fmt.Sprintf(".%d", out)
+// 		} else {
+// 			return "<error converting oid>"
+// 		}
+// 	}
+// 	return result[1:]
+// }
 
 // OidToString returns the string represention of the OIDs in a GList
 func OidToString(vbl *_Ctype_GList) string {
@@ -67,7 +125,7 @@ func OidToString(vbl *_Ctype_GList) string {
 	var result_c *C.char = C.CString(result_go)
 	defer C.free(unsafe.Pointer(result_c))
 
-	C.oid_to_str(vbl, result_c)
+	C.oids_to_string(vbl, result_c)
 	return C.GoString(result_c)
 }
 
@@ -200,6 +258,75 @@ func (t *_Ctype_GNetSnmpTAddress) String() string {
 package main
 import ("github.com/soniah/gsnmp/enumconv")
 func main() {
+	ccode := "gsnmp-0.3.0/src/pdu.h"
+	vals := []string{"GNET_SNMP_VARBIND_TYPE_NULL", "GNET_SNMP_VARBIND_TYPE_OCTETSTRING", "GNET_SNMP_VARBIND_TYPE_OBJECTID", "GNET_SNMP_VARBIND_TYPE_IPADDRESS", "GNET_SNMP_VARBIND_TYPE_INTEGER32", "GNET_SNMP_VARBIND_TYPE_UNSIGNED32", "GNET_SNMP_VARBIND_TYPE_COUNTER32", "GNET_SNMP_VARBIND_TYPE_TIMETICKS", "GNET_SNMP_VARBIND_TYPE_OPAQUE", "GNET_SNMP_VARBIND_TYPE_COUNTER64", "GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT", "GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE", "GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW"}
+	enumconv.Write("VarBindType", "_Ctype_GNetSnmpVarBindType", vals, ccode, 0)
+}
+gocog]]]*/
+
+// type and values for _Ctype_GNetSnmpVarBindType
+//
+type VarBindType int
+
+const (
+	GNET_SNMP_VARBIND_TYPE_NULL VarBindType = iota
+	GNET_SNMP_VARBIND_TYPE_OCTETSTRING
+	GNET_SNMP_VARBIND_TYPE_OBJECTID
+	GNET_SNMP_VARBIND_TYPE_IPADDRESS
+	GNET_SNMP_VARBIND_TYPE_INTEGER32
+	GNET_SNMP_VARBIND_TYPE_UNSIGNED32
+	GNET_SNMP_VARBIND_TYPE_COUNTER32
+	GNET_SNMP_VARBIND_TYPE_TIMETICKS
+	GNET_SNMP_VARBIND_TYPE_OPAQUE
+	GNET_SNMP_VARBIND_TYPE_COUNTER64
+	GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT
+	GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE
+	GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW
+)
+
+// Stringer for _Ctype_GNetSnmpVarBindType
+//
+// C:
+//    gsnmp-0.3.0/src/pdu.h
+//
+func (varbindtype _Ctype_GNetSnmpVarBindType) String() string {
+	switch VarBindType(varbindtype) {
+	case GNET_SNMP_VARBIND_TYPE_NULL:
+		return "GNET_SNMP_VARBIND_TYPE_NULL"
+	case GNET_SNMP_VARBIND_TYPE_OCTETSTRING:
+		return "GNET_SNMP_VARBIND_TYPE_OCTETSTRING"
+	case GNET_SNMP_VARBIND_TYPE_OBJECTID:
+		return "GNET_SNMP_VARBIND_TYPE_OBJECTID"
+	case GNET_SNMP_VARBIND_TYPE_IPADDRESS:
+		return "GNET_SNMP_VARBIND_TYPE_IPADDRESS"
+	case GNET_SNMP_VARBIND_TYPE_INTEGER32:
+		return "GNET_SNMP_VARBIND_TYPE_INTEGER32"
+	case GNET_SNMP_VARBIND_TYPE_UNSIGNED32:
+		return "GNET_SNMP_VARBIND_TYPE_UNSIGNED32"
+	case GNET_SNMP_VARBIND_TYPE_COUNTER32:
+		return "GNET_SNMP_VARBIND_TYPE_COUNTER32"
+	case GNET_SNMP_VARBIND_TYPE_TIMETICKS:
+		return "GNET_SNMP_VARBIND_TYPE_TIMETICKS"
+	case GNET_SNMP_VARBIND_TYPE_OPAQUE:
+		return "GNET_SNMP_VARBIND_TYPE_OPAQUE"
+	case GNET_SNMP_VARBIND_TYPE_COUNTER64:
+		return "GNET_SNMP_VARBIND_TYPE_COUNTER64"
+	case GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT:
+		return "GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT"
+	case GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE:
+		return "GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE"
+	case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
+		return "GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW"
+	}
+	return "UNKNOWN _Ctype_GNetSnmpVarBindType"
+}
+
+//[[[end]]]
+
+/*[[[gocog
+package main
+import ("github.com/soniah/gsnmp/enumconv")
+func main() {
 	ccode := "/usr/include/gsnmp/utils.h"
 	vals := []string{"GNET_SNMP_URI_GET", "GNET_SNMP_URI_NEXT", "GNET_SNMP_URI_WALK"}
 	enumconv.Write("UriType", "_Ctype_GNetSnmpUriType", vals, ccode, 0)
@@ -323,7 +450,7 @@ func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
 /*[[[gocog
 package main
 import ("github.com/soniah/gsnmp/enumconv")
-uunc main() {
+func main() {
 	ccode := "gsnmp-0.3.0/src/pdu.h"
 	vals := []string{"GNET_SNMP_PDU_ERR_DONE", "GNET_SNMP_PDU_ERR_PROCEDURE", "GNET_SNMP_PDU_ERR_INTERNAL", "GNET_SNMP_PDU_ERR_NORESPONSE", "GNET_SNMP_PDU_ERR_NOERROR", "GNET_SNMP_PDU_ERR_TOOBIG", "GNET_SNMP_PDU_ERR_NOSUCHNAME", "GNET_SNMP_PDU_ERR_BADVALUE", "GNET_SNMP_PDU_ERR_READONLY", "GNET_SNMP_PDU_ERR_GENERROR", "GNET_SNMP_PDU_ERR_NOACCESS", "GNET_SNMP_PDU_ERR_WRONGTYPE", "GNET_SNMP_PDU_ERR_WRONGLENGTH", "GNET_SNMP_PDU_ERR_WRONGENCODING", "GNET_SNMP_PDU_ERR_WRONGVALUE", "GNET_SNMP_PDU_ERR_NOCREATION", "GNET_SNMP_PDU_ERR_INCONSISTENTVALUE", "GNET_SNMP_PDU_ERR_RESOURCEUNAVAILABLE", "GNET_SNMP_PDU_ERR_COMMITFAILED", "GNET_SNMP_PDU_ERR_UNDOFAILED", "GNET_SNMP_PDU_ERR_AUTHORIZATIONERROR", "GNET_SNMP_PDU_ERR_NOTWRITABLE", "GNET_SNMP_PDU_ERR_INCONSISTENTNAME"}
 	enumconv.Write("PduError", "_Ctype_gint32", vals, ccode, -4)

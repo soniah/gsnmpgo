@@ -1,5 +1,22 @@
 package main
 
+// gsnmp is a Go wrapper around the C gsnmp library.
+//
+// Copyright (C) 2013 Sonia Hamilton sonia@snowfrog.get.
+//
+// gsnmp is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// gsnmp is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser Public License for more details.
+//
+// You should have received a copy of the GNU Lesser Public License
+// along with gsnmp.  If not, see <http://www.gnu.org/licenses/>.
+
 import (
 	"fmt"
 	"os"
@@ -11,8 +28,8 @@ func main() {
 	// home
 	//uri := `snmp://public@192.168.1.10/`
 	//uri := `snmp://public@192.168.1.10//1.3.6.1.2.1.1.*`
-	uri := `snmp://public@192.168.1.10//1.3.6.1.2.1.1.1.0`
-	//uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
+	//uri := `snmp://public@192.168.1.10//1.3.6.1.2.1.1.1.0`
+	uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)` // string, oid
 
 	// work
 
@@ -47,7 +64,8 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println(results) // hack
+		//fmt.Println(results) // hack
+		gsnmp.Dump(results)
 	case gsnmp.GNET_SNMP_URI_NEXT:
 		fmt.Println("doing GNET_SNMP_URI_NEXT")
 	case gsnmp.GNET_SNMP_URI_WALK:

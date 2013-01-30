@@ -1,15 +1,28 @@
-// enumconv and gsnmp/stringers.go contain stringers for C enums and other
-// types. To help with the generation of the boilerplate code for the C enums,
-// github.com/natefinch/gocog is used. AFTER EDITING any gocog sections
+// Package enumconv and gsnmp/stringers.go contain stringers for C enums and
+// other types. To help with the generation of the boilerplate code for the C
+// enums, github.com/natefinch/gocog is used. AFTER EDITING any gocog sections
 // (between gocog open and close square brackets), you MUST run:
 //
 //     rm -f stringers.go_cog; $GOPATH/bin/gocog stringers.go
 //
 package enumconv
 
-// Copyright 2012 Sonia Hamilton <sonia@snowfrog.net>. All rights
-// reserved.  Use of this source code is governed by a BSD-style license
-// that can be found in the LICENSE file.
+// gsnmp is a Go wrapper around the C gsnmp library.
+//
+// Copyright (C) 2013 Sonia Hamilton sonia@snowfrog.get.
+//
+// gsnmp is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// gsnmp is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser Public License for more details.
+//
+// You should have received a copy of the GNU Lesser Public License
+// along with gsnmp.  If not, see <http://www.gnu.org/licenses/>.
 
 import (
 	"fmt"
@@ -43,7 +56,7 @@ func Write(gotypename string, ctypename string, enums []string, ccode string, st
 	fmt.Println("const (")
 	for i, enum := range enums {
 		if i == 0 {
-		  if start_at == 0 {
+			if start_at == 0 {
 				fmt.Printf("	%s %s = iota\n", enum, gotypename)
 			} else {
 				fmt.Printf("	%s %s = iota %+d\n", enum, gotypename, start_at)
