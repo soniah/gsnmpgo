@@ -1,4 +1,4 @@
-package gsnmp
+package gsnmpgo
 
 // Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a 3-clause BSD

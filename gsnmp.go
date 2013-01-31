@@ -1,7 +1,6 @@
-// Package gsnmp is a go/cgo wrapper around gsnmp. It is under development,
+// Package gsnmpgo is a go/cgo wrapper around gsnmp. It is under development,
 // therefore API's may/will change, and doco/error handling/tests are minimal.
-//
-package gsnmp
+package gsnmpgo
 
 // Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a 3-clause BSD
@@ -13,7 +12,6 @@ package gsnmp
 
 /*
 #cgo pkg-config: glib-2.0 gsnmp
-
 #include <gsnmp/ber.h>
 #include <gsnmp/pdu.h>
 #include <gsnmp/dispatch.h>
@@ -23,9 +21,7 @@ package gsnmp
 #include <gsnmp/transport.h>
 #include <gsnmp/utils.h>
 #include <gsnmp/gsnmp.h>
-
 #include <stdlib.h>
-#include <stdio.h>
 
 // convenience wrapper for gnet_snmp_enum_get_label()
 gchar const *
@@ -44,9 +40,8 @@ import (
 var _ = reflect.DeepEqual(0, 1) // dummy
 
 // libname returns the name of this library, for generating error messages.
-//
 func libname() string {
-	return "gsnmp"
+	return "gsnmpgo"
 }
 
 // ParseURI parses an SNMP URI into fields.
@@ -58,7 +53,7 @@ func libname() string {
 // Example:
 //
 //    uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
-//    parsed_uri, err := gsnmp.ParseURI(uri)
+//    parsed_uri, err := gsnmpgo.ParseURI(uri)
 //    if err != nil {
 //    	fmt.Println(err)
 //    	os.Exit(1)
@@ -99,13 +94,12 @@ func ParsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype 
 // UriDelete frees the memory used by a parsed_uri.
 //
 // A defered call to UriDelete should be made after ParsePath().
-//
 func UriDelete(parsed_uri *_Ctype_GURI) {
 	C.gnet_uri_delete(parsed_uri)
 }
 
 // NewUri creates a session from a parsed uri.
-func NewUri(uri string, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
+func NewUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
 	var gerror *C.GError
 	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
 
@@ -118,6 +112,7 @@ func NewUri(uri string, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err 
 	if session == nil {
 		return session, fmt.Errorf("%s: unable to create session", libname())
 	}
+	session.version = (_Ctype_GNetSnmpVersion)(version)
 
 	// results
 	return session, nil
@@ -154,8 +149,8 @@ func Dump(out *_Ctype_GList) {
 			fmt.Printf("result:\n%s", result)
 			return
 		}
-		data := (*C.GNetSnmpVarBind)(out.data) // gsnmp._Ctype_gpointer -> *gsnmp._Ctype_GNetSnmpVarBind
-		oid := OidArrayToString(data.oid, data.oid_len)
+		data := (*C.GNetSnmpVarBind)(out.data) // gsnmpgo._Ctype_gpointer -> *gsnmpgo._Ctype_GNetSnmpVarBind
+		oid := GIntArrayOidString(data.oid, data.oid_len)
 		result += oid + ":"
 		result += fmt.Sprintf("%s", data._type) + ":"
 
@@ -169,7 +164,7 @@ func Dump(out *_Ctype_GList) {
 
 		case GNET_SNMP_VARBIND_TYPE_OBJECTID:
 			guint32_ptr := union_ui32v(data.value)
-			result += OidArrayToString(guint32_ptr, data.value_len)
+			result += GIntArrayOidString(guint32_ptr, data.value_len)
 
 		case GNET_SNMP_VARBIND_TYPE_IPADDRESS:
 			result += union_ui8v_ipaddress(data.value, data.value_len)
@@ -188,7 +183,7 @@ func Dump(out *_Ctype_GList) {
 			result += fmt.Sprintf("%d", union_ui32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_OPAQUE:
-			result += "TODO"
+			result += union_ui8v_hexstring(data.value, data.value_len)
 
 		case GNET_SNMP_VARBIND_TYPE_COUNTER64:
 			result += fmt.Sprintf("%d", union_ui64(data.value))

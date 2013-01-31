@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/soniah/gsnmp"
+	"github.com/soniah/gsnmpgo"
 )
 
 func main() {
@@ -21,47 +21,46 @@ func main() {
 	//uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0,1.3.6.1.2.1.1.3.0,1.3.6.1.2.1.1.7.0,1.3.6.1.2.1.2.2.1.5.6,1.3.6.1.2.1.2.2.1.6.1,1.3.6.1.2.1.4.20.1.1.192.168.1.10,1.3.6.1.2.1.2.2.1.10.1)`
 
 	// simulator 127.0.0.1
-	// string, counter64
-	uri := `snmp://public@127.0.0.1:162//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.31.1.1.1.8.19)`
+	// string, counter64, hex string
+	uri := `snmp://public@127.0.0.1:162//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.31.1.1.1.8.19,1.3.6.1.2.1.3.1.1.2.14.1.10.0.0.1)`
 
 	// work
 
-	parsed_uri, err := gsnmp.ParseURI(uri)
+	parsed_uri, err := gsnmpgo.ParseURI(uri)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println("ParseURI():", parsed_uri)
 
-	vbl, uritype, err := gsnmp.ParsePath(uri, parsed_uri)
-	defer gsnmp.UriDelete(parsed_uri)
+	vbl, uritype, err := gsnmpgo.ParsePath(uri, parsed_uri)
+	defer gsnmpgo.UriDelete(parsed_uri)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Printf("ParsePath(): {oids: %s, uritype: %s, err: %v}\n", gsnmp.OidToString(vbl), uritype, err)
+	fmt.Printf("ParsePath(): {oids: %s, uritype: %s, err: %v}\n", gsnmpgo.GListOidsString(vbl), uritype, err)
 
-	session, err := gsnmp.NewUri(uri, parsed_uri)
-	// defer gsnmp.UriDelete(parsed_uri) already setup
+	session, err := gsnmpgo.NewUri(uri, gsnmpgo.GNET_SNMP_V2C, parsed_uri)
+	// defer gsnmpgo.UriDelete(parsed_uri) is already setup
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println("session:", session)
 
-	switch gsnmp.UriType(uritype) {
-	case gsnmp.GNET_SNMP_URI_GET:
+	switch gsnmpgo.UriType(uritype) {
+	case gsnmpgo.GNET_SNMP_URI_GET:
 		fmt.Println("doing GNET_SNMP_URI_GET")
-		results, err := gsnmp.Get(session, vbl)
+		results, err := gsnmpgo.Get(session, vbl)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		//fmt.Println(results) // hack
-		gsnmp.Dump(results)
-	case gsnmp.GNET_SNMP_URI_NEXT:
+		gsnmpgo.Dump(results)
+	case gsnmpgo.GNET_SNMP_URI_NEXT:
 		fmt.Println("doing GNET_SNMP_URI_NEXT")
-	case gsnmp.GNET_SNMP_URI_WALK:
+	case gsnmpgo.GNET_SNMP_URI_WALK:
 		fmt.Println("doing GNET_SNMP_URI_WALK")
 	}
 }

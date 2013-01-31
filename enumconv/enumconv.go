@@ -1,10 +1,5 @@
-// Package enumconv and gsnmp/stringers.go contain stringers for C enums and
-// other types. To help with the generation of the boilerplate code for the C
-// enums, github.com/natefinch/gocog is used. AFTER EDITING any gocog sections
-// (between gocog open and close square brackets), you MUST run:
-//
-//     rm -f stringers.go_cog; $GOPATH/bin/gocog stringers.go
-//
+// Package enumconv provides helper functions for gocog, used in
+// gsnmpgo/stringers.go.
 package enumconv
 
 // Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
@@ -31,11 +26,10 @@ import (
 // I decided not to parse the C enum typedefs and instead opted to pass in
 // fields like gotypename and ctypename, as parsing would be overkill for this
 // project.
-//
 func Write(gotypename string, ctypename string, enums []string, ccode string, start_at int) {
 
 	// type
-	fmt.Printf("\n// type and values for %s\n//\n", ctypename)
+	fmt.Printf("\n// type and values for %s\n", ctypename)
 	fmt.Printf("type %s int\n", gotypename)
 	fmt.Println()
 
@@ -63,7 +57,6 @@ func Write(gotypename string, ctypename string, enums []string, ccode string, st
 	for _, line := range strings.Split(ccode, "\n") {
 		fmt.Printf("//    %s\n", line)
 	}
-	fmt.Println("//")
 
 	// start stringer function
 	fmt.Printf("func (%s %s) String() string {\n", strings.ToLower(gotypename), ctypename)

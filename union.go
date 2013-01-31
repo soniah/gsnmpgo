@@ -1,4 +1,4 @@
-package gsnmp
+package gsnmpgo
 
 // Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a 3-clause BSD
@@ -98,7 +98,9 @@ func union_ui8v_string(cbytes [8]byte, value_len _Ctype_gsize) (result string) {
 	gobytes := C.GoBytes(up, length)
 	for i := 0; i < int(length); i++ {
 		if !strconv.IsPrint(rune(gobytes[i])) {
-			return as_hexstring(gobytes, int(length))
+			// can't pass gobytes & length to union_ui8v_hexstring() -
+			// it's also used for TYPE_OPAQUE
+			return union_ui8v_hexstring(cbytes, value_len)
 		}
 	}
 
@@ -109,8 +111,18 @@ func union_ui8v_string(cbytes [8]byte, value_len _Ctype_gsize) (result string) {
 // the ui8v field contains unprintable characters - convert to "hex string"
 //
 // eg 00 25 89 27 56 1B
-func as_hexstring(gobytes []byte, length int) (result string) {
-	for i := 0; i < length; i++ {
+func union_ui8v_hexstring(cbytes [8]byte, value_len _Ctype_gsize) (result string) {
+	var ptr uint64
+	var err error
+	buf := bytes.NewBuffer(cbytes[:])
+	if err = binary.Read(buf, binary.LittleEndian, &ptr); err != nil { // read bytes as uint64
+		return
+	}
+	up := (unsafe.Pointer(uintptr(ptr))) // convert the uint64 into a pointer
+
+	length := (_Ctype_int)(value_len)
+	gobytes := C.GoBytes(up, length)
+	for i := 0; i < int(length); i++ {
 		result += fmt.Sprintf(" %02X", gobytes[i])
 	}
 	return result[1:] // strip leading space

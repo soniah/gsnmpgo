@@ -1,4 +1,4 @@
-gsnmp
+gsnmpgo
 ======
 
 A go/cgo wrapper around gsnmp.
@@ -12,14 +12,14 @@ See dev branches for latest commits.
 
 Sonia Hamilton, sonia@snowfrog.net, http://www.snowfrog.net.
 
-**See also:** http://godoc.org/github.com/soniah/gsnmp
+**See also:** http://godoc.org/github.com/soniah/gsnmpgo
 
 Install
 -------
 
 ```shell
 sudo aptitude install #some gsnmp, glib, gnet dev libraries#
-go get github.com/soniah/gsnmp
+go get github.com/soniah/gsnmpgo
 ```
 
 License

@@ -1,10 +1,18 @@
-package gsnmp
+package gsnmpgo
 
 // Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
 // reserved.  Use of this source code is governed by a 3-clause BSD
 // license that can be found in the LICENSE file.
 
+// stringers.go contains stringers for C enums and other types. To help with
+// the generation of the boilerplate code for the C enums,
+// github.com/natefinch/gocog is used. AFTER EDITING any gocog sections
+// (between gocog open and close square brackets), you MUST run:
+//
+//     rm -f stringers.go_cog; $GOPATH/bin/gocog stringers.go; go fmt ./...
+
 /*
+#cgo pkg-config: glib-2.0 gsnmp
 #include <gsnmp/ber.h>
 #include <gsnmp/pdu.h>
 #include <gsnmp/dispatch.h>
@@ -14,43 +22,7 @@ package gsnmp
 #include <gsnmp/transport.h>
 #include <gsnmp/utils.h>
 #include <gsnmp/gsnmp.h>
-
 #include <stdlib.h>
-#include <stdio.h>
-
-// TODO rewrite oids_to_string() in Go
-
-#define MAX_OIDS_STR_LEN 1000
-
-static void
-oids_to_string(GList *list, char result[MAX_OIDS_STR_LEN]) {
-	result[0] = '\0';
-	while (list) {
-		// assume an oid isn't longer than 200 characters
-		if (strlen(result) > (MAX_OIDS_STR_LEN - 200)) {
-			// run out of space, just append ...
-			strcat(result, "...");
-			return;
-		}
-
-		GList *next = list->next;
-		GNetSnmpVarBind *vb = list->data;
-
-		gint i;
-		// assume an oid octet isn't longer than 20 characters
-		char some_digits[20];
-		for (i = 0; i < vb->oid_len; i++) {
-			strcat(result, ".");
-			sprintf(some_digits, "%i", vb->oid[i]);
-			strcat(result, some_digits);
-			some_digits[0] = '\0';
-		}
-		if (next != NULL) {
-			strcat(result, ":");
-		}
-		list = next;
-	}
-}
 */
 import "C"
 
@@ -62,8 +34,8 @@ import (
 	"unsafe"
 )
 
-// OidArrayToString converts an oid from C array of guint32's to a Go string
-func OidArrayToString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string) {
+// GIntArrayOidString converts an oid from C array of guint32's to a Go string
+func GIntArrayOidString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string) {
 	size := int(unsafe.Sizeof(oid))
 	length := int(oid_len)
 	gbytes := C.GoBytes(unsafe.Pointer(oid), (_Ctype_int)(size*length))
@@ -77,19 +49,21 @@ func OidArrayToString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string)
 			return "<error converting oid>"
 		}
 	}
-	return result[1:]
+	return result[1:] // string leading dot
 }
 
-// OidToString returns the string represention of the OIDs in a GList
-func OidToString(vbl *_Ctype_GList) string {
-	// allocate "char result[MAX_OIDS_STR_LEN]"
-	const MAX_OIDS_STR_LEN = 1000 // same as C code define
-	result_go := fmt.Sprintf("%"+strconv.Itoa(MAX_OIDS_STR_LEN)+"s", " ")
-	var result_c *C.char = C.CString(result_go)
-	defer C.free(unsafe.Pointer(result_c))
-
-	C.oids_to_string(vbl, result_c)
-	return C.GoString(result_c)
+// GListOidsString returns the string represention of the OIDs in a GList
+func GListOidsString(vbl *_Ctype_GList) (result string) {
+	for {
+		if vbl == nil {
+			return result[1:] // remove leading :
+		}
+		data := (*C.GNetSnmpVarBind)(vbl.data) // gsnmpgo._Ctype_gpointer -> *gsnmpgo._Ctype_GNetSnmpVarBind
+		oid := GIntArrayOidString(data.oid, data.oid_len)
+		result += ":" + oid
+		vbl = vbl.next
+	}
+	panic(fmt.Sprintf("%s: GListOidsString(): fell out of for loop", libname()))
 }
 
 // Stringer for *_Ctype_GURI
@@ -109,7 +83,6 @@ func OidToString(vbl *_Ctype_GList) string {
 //      gchar* query;
 //      gchar* fragment;
 //    };
-//
 func (parsed_uri *_Ctype_GURI) String() string {
 	scheme := C.GoString((*C.char)(parsed_uri.scheme))
 	userinfo := C.GoString((*C.char)(parsed_uri.userinfo))
@@ -145,7 +118,6 @@ func (parsed_uri *_Ctype_GURI) String() string {
 // http://developer.gnome.org/glib/2.34/glib-Strings.html
 // gchar *str - points to the character data. It may move as text is added. The
 // str field is null-terminated and so can be used as an ordinary C string.
-//
 func (s _Ctype_GString) String() string {
 	return C.GoString((*_Ctype_char)(s.str))
 }
@@ -169,13 +141,10 @@ func (s _Ctype_GString) String() string {
 //         GNetSnmpSecLevel sec_level;      /* security level */
 //         GNetSnmpDoneFunc done_callback;  /* what to call when complete */
 //     }
-//
 func (s *_Ctype_GNetSnmp) String() string {
-
 	error_status := strconv.Itoa(int(s.error_status))
 	error_index := strconv.Itoa(int(s.error_index))
 	retries := strconv.Itoa(int(s.retries))
-	version := strconv.Itoa(int(s.version))
 
 	result := "{"
 	result += "taddress:" + fmt.Sprintf("%s", s.taddress) + " "
@@ -183,8 +152,7 @@ func (s *_Ctype_GNetSnmp) String() string {
 	result += "error_status:" + error_status + " "
 	result += "error_index:" + error_index + " "
 	result += "retries:" + retries + " "
-	// TODO need function to set version on session
-	result += "version:" + version + " "
+	result += "version:" + fmt.Sprintf("%s", s.version) + " "
 	result += "context_name:" + fmt.Sprintf("%s", s.ctxt_name) + " "
 	result += "security_name:" + fmt.Sprintf("%s", s.sec_name) + " "
 	result += "security_model:" + fmt.Sprintf("%s", s.sec_model) + " "
@@ -219,7 +187,7 @@ func (t *_Ctype_GNetSnmpTAddress) String() string {
 
 /*[[[gocog
 package main
-import ("github.com/soniah/gsnmp/enumconv")
+import ("github.com/soniah/gsnmpgo/enumconv")
 func main() {
 	ccode := "gsnmp-0.3.0/src/pdu.h"
 	vals := []string{"GNET_SNMP_VARBIND_TYPE_NULL", "GNET_SNMP_VARBIND_TYPE_OCTETSTRING", "GNET_SNMP_VARBIND_TYPE_OBJECTID", "GNET_SNMP_VARBIND_TYPE_IPADDRESS", "GNET_SNMP_VARBIND_TYPE_INTEGER32", "GNET_SNMP_VARBIND_TYPE_UNSIGNED32", "GNET_SNMP_VARBIND_TYPE_COUNTER32", "GNET_SNMP_VARBIND_TYPE_TIMETICKS", "GNET_SNMP_VARBIND_TYPE_OPAQUE", "GNET_SNMP_VARBIND_TYPE_COUNTER64", "GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT", "GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE", "GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW"}
@@ -228,7 +196,6 @@ func main() {
 gocog]]]*/
 
 // type and values for _Ctype_GNetSnmpVarBindType
-//
 type VarBindType int
 
 const (
@@ -251,7 +218,6 @@ const (
 //
 // C:
 //    gsnmp-0.3.0/src/pdu.h
-//
 func (varbindtype _Ctype_GNetSnmpVarBindType) String() string {
 	switch VarBindType(varbindtype) {
 	case GNET_SNMP_VARBIND_TYPE_NULL:
@@ -288,7 +254,7 @@ func (varbindtype _Ctype_GNetSnmpVarBindType) String() string {
 
 /*[[[gocog
 package main
-import ("github.com/soniah/gsnmp/enumconv")
+import ("github.com/soniah/gsnmpgo/enumconv")
 func main() {
 	ccode := "/usr/include/gsnmp/utils.h"
 	vals := []string{"GNET_SNMP_URI_GET", "GNET_SNMP_URI_NEXT", "GNET_SNMP_URI_WALK"}
@@ -297,7 +263,6 @@ func main() {
 gocog]]]*/
 
 // type and values for _Ctype_GNetSnmpUriType
-//
 type UriType int
 
 const (
@@ -310,7 +275,6 @@ const (
 //
 // C:
 //    /usr/include/gsnmp/utils.h
-//
 func (uritype _Ctype_GNetSnmpUriType) String() string {
 	switch UriType(uritype) {
 	case GNET_SNMP_URI_GET:
@@ -327,7 +291,7 @@ func (uritype _Ctype_GNetSnmpUriType) String() string {
 
 /*[[[gocog
 package main
-import ("github.com/soniah/gsnmp/enumconv")
+import ("github.com/soniah/gsnmpgo/enumconv")
 func main() {
 	ccode := "gsnmp-0.3.0/src/security.h"
 	vals := []string{"GNET_SNMP_SECMODEL_ANY", "GNET_SNMP_SECMODEL_SNMPV1", "GNET_SNMP_SECMODEL_SNMPV2C", "GNET_SNMP_SECMODEL_SNMPV3"}
@@ -336,7 +300,6 @@ func main() {
 gocog]]]*/
 
 // type and values for _Ctype_GNetSnmpSecModel
-//
 type SecModel int
 
 const (
@@ -350,7 +313,6 @@ const (
 //
 // C:
 //    gsnmp-0.3.0/src/security.h
-//
 func (secmodel _Ctype_GNetSnmpSecModel) String() string {
 	switch SecModel(secmodel) {
 	case GNET_SNMP_SECMODEL_ANY:
@@ -369,7 +331,7 @@ func (secmodel _Ctype_GNetSnmpSecModel) String() string {
 
 /*[[[gocog
 package main
-import ("github.com/soniah/gsnmp/enumconv")
+import ("github.com/soniah/gsnmpgo/enumconv")
 func main() {
 	ccode := "gsnmp-0.3.0/src/security.h"
 	vals := []string{"GNET_SNMP_SECLEVEL_NANP", "GNET_SNMP_SECLEVEL_ANP", "GNET_SNMP_SECLEVEL_AP"}
@@ -378,7 +340,6 @@ func main() {
 gocog]]]*/
 
 // type and values for _Ctype_GNetSnmpSecLevel
-//
 type SecLevel int
 
 const (
@@ -391,7 +352,6 @@ const (
 //
 // C:
 //    gsnmp-0.3.0/src/security.h
-//
 func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
 	switch SecLevel(seclevel) {
 	case GNET_SNMP_SECLEVEL_NANP:
@@ -412,7 +372,7 @@ func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
 
 /*[[[gocog
 package main
-import ("github.com/soniah/gsnmp/enumconv")
+import ("github.com/soniah/gsnmpgo/enumconv")
 func main() {
 	ccode := "gsnmp-0.3.0/src/pdu.h"
 	vals := []string{"GNET_SNMP_PDU_ERR_DONE", "GNET_SNMP_PDU_ERR_PROCEDURE", "GNET_SNMP_PDU_ERR_INTERNAL", "GNET_SNMP_PDU_ERR_NORESPONSE", "GNET_SNMP_PDU_ERR_NOERROR", "GNET_SNMP_PDU_ERR_TOOBIG", "GNET_SNMP_PDU_ERR_NOSUCHNAME", "GNET_SNMP_PDU_ERR_BADVALUE", "GNET_SNMP_PDU_ERR_READONLY", "GNET_SNMP_PDU_ERR_GENERROR", "GNET_SNMP_PDU_ERR_NOACCESS", "GNET_SNMP_PDU_ERR_WRONGTYPE", "GNET_SNMP_PDU_ERR_WRONGLENGTH", "GNET_SNMP_PDU_ERR_WRONGENCODING", "GNET_SNMP_PDU_ERR_WRONGVALUE", "GNET_SNMP_PDU_ERR_NOCREATION", "GNET_SNMP_PDU_ERR_INCONSISTENTVALUE", "GNET_SNMP_PDU_ERR_RESOURCEUNAVAILABLE", "GNET_SNMP_PDU_ERR_COMMITFAILED", "GNET_SNMP_PDU_ERR_UNDOFAILED", "GNET_SNMP_PDU_ERR_AUTHORIZATIONERROR", "GNET_SNMP_PDU_ERR_NOTWRITABLE", "GNET_SNMP_PDU_ERR_INCONSISTENTNAME"}
@@ -421,7 +381,6 @@ func main() {
 gocog]]]*/
 
 // type and values for _Ctype_gint32
-//
 type PduError int
 
 const (
@@ -454,7 +413,6 @@ const (
 //
 // C:
 //    gsnmp-0.3.0/src/pdu.h
-//
 func (pduerror _Ctype_gint32) String() string {
 	switch PduError(pduerror) {
 	case GNET_SNMP_PDU_ERR_DONE:
@@ -505,6 +463,46 @@ func (pduerror _Ctype_gint32) String() string {
 		return "GNET_SNMP_PDU_ERR_INCONSISTENTNAME"
 	}
 	return "UNKNOWN _Ctype_gint32"
+}
+
+//[[[end]]]
+
+/*[[[gocog
+package main
+import ("github.com/soniah/gsnmpgo/enumconv")
+func main() {
+	ccode := "gsnmp-0.3.0/src/message.h"
+	vals := []string{"GNET_SNMP_V1", "GNET_SNMP_V2C", "GNET_SNMP_V2P", "GNET_SNMP_V3"}
+	enumconv.Write("SnmpVersion", "_Ctype_GNetSnmpVersion", vals, ccode, 0)
+}
+gocog]]]*/
+
+// type and values for _Ctype_GNetSnmpVersion
+type SnmpVersion int
+
+const (
+	GNET_SNMP_V1 SnmpVersion = iota
+	GNET_SNMP_V2C
+	GNET_SNMP_V2P
+	GNET_SNMP_V3
+)
+
+// Stringer for _Ctype_GNetSnmpVersion
+//
+// C:
+//    gsnmp-0.3.0/src/message.h
+func (snmpversion _Ctype_GNetSnmpVersion) String() string {
+	switch SnmpVersion(snmpversion) {
+	case GNET_SNMP_V1:
+		return "GNET_SNMP_V1"
+	case GNET_SNMP_V2C:
+		return "GNET_SNMP_V2C"
+	case GNET_SNMP_V2P:
+		return "GNET_SNMP_V2P"
+	case GNET_SNMP_V3:
+		return "GNET_SNMP_V3"
+	}
+	return "UNKNOWN _Ctype_GNetSnmpVersion"
 }
 
 //[[[end]]]
