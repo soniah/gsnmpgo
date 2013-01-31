@@ -5,7 +5,9 @@ package gsnmp
 // license that can be found in the LICENSE file.
 
 // union.go contains functions for extracting values from the union
-// in this struct:
+// in the following struct. Go will read the struct as a byte sequence
+// as long as the longest field in the struct ie [8]byte. Hence these
+// functions take "cbytes [8]byte" as a parameter.
 //
 // struct _GNetSnmpVarBind {
 //     guint32		*oid;		/* name of the variable */
@@ -23,48 +25,103 @@ package gsnmp
 // };
 
 /*
-#cgo pkg-config: glib-2.0 gsnmp
-
-#include <gsnmp/ber.h>
-#include <gsnmp/pdu.h>
-#include <gsnmp/dispatch.h>
-#include <gsnmp/message.h>
-#include <gsnmp/security.h>
-#include <gsnmp/session.h>
-#include <gsnmp/transport.h>
-#include <gsnmp/utils.h>
-#include <gsnmp/gsnmp.h>
-
-#include <stdlib.h>
-#include <stdio.h>
+// no C code
 */
 import "C"
 
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"strconv"
 	"unsafe"
 )
 
-// return ui32v field as a guint32 ptr
-func union_to_guint32_ptr(cbytes [8]byte) (result *_Ctype_guint32) {
+// return i32 field
+func union_i32(cbytes [8]byte) (result int32) {
 	buf := bytes.NewBuffer(cbytes[:])
-	var ptr uint64
-	if err := binary.Read(buf, binary.LittleEndian, &ptr); err == nil {
-		uptr := uintptr(ptr)
-		return (*_Ctype_guint32)(unsafe.Pointer(uptr))
+	if err := binary.Read(buf, binary.LittleEndian, &result); err == nil { // read bytes as int32
+		return result
 	}
-	return nil
+	return 0
 }
 
-// return ui8v as a string
-func union_to_string(cbytes [8]byte) string {
+// return ui32 field
+func union_ui32(cbytes [8]byte) (result uint32) {
+	buf := bytes.NewBuffer(cbytes[:])
+	if err := binary.Read(buf, binary.LittleEndian, &result); err == nil { // read bytes as uint32
+		return result
+	}
+	return 0
+}
+
+// i64 field isn't used (??)
+
+// return ui64 field
+func union_ui64(cbytes [8]byte) (result uint64) {
+	buf := bytes.NewBuffer(cbytes[:])
+	if err := binary.Read(buf, binary.LittleEndian, &result); err == nil { // read bytes as uint64
+		return result
+	}
+	return 0
+}
+
+// return ui8v field as an ip address
+func union_ui8v_ipaddress(cbytes [8]byte, value_len _Ctype_gsize) (result string) {
+	if int(value_len) != 4 { // an ip4 address must have 4 bytes
+		return
+	}
 	buf := bytes.NewBuffer(cbytes[:])
 	var ptr uint64
-	if err := binary.Read(buf, binary.LittleEndian, &ptr); err == nil {
-		uptr := uintptr(ptr)
-		char_ptr := (*_Ctype_char)(unsafe.Pointer(uptr))
-		return C.GoString(char_ptr)
+	if err := binary.Read(buf, binary.LittleEndian, &ptr); err == nil { // read bytes as uint64
+		up := (unsafe.Pointer(uintptr(ptr))) // convert the uint64 into a pointer
+		gobytes := C.GoBytes(up, 4)
+		for i := 0; i < 4; i++ {
+			result += fmt.Sprintf(".%d", gobytes[i])
+		}
+		return result[1:] // strip leading dot
 	}
-	return ""
+	return
+}
+
+// return ui8v field as a string
+func union_ui8v_string(cbytes [8]byte, value_len _Ctype_gsize) (result string) {
+	var ptr uint64
+	var err error
+	buf := bytes.NewBuffer(cbytes[:])
+	if err = binary.Read(buf, binary.LittleEndian, &ptr); err != nil { // read bytes as uint64
+		return
+	}
+	up := (unsafe.Pointer(uintptr(ptr))) // convert the uint64 into a pointer
+
+	length := (_Ctype_int)(value_len)
+	gobytes := C.GoBytes(up, length)
+	for i := 0; i < int(length); i++ {
+		if !strconv.IsPrint(rune(gobytes[i])) {
+			return as_hexstring(gobytes, int(length))
+		}
+	}
+
+	char_ptr := (*_Ctype_char)(up)
+	return C.GoString(char_ptr)
+}
+
+// the ui8v field contains unprintable characters - convert to "hex string"
+//
+// eg 00 25 89 27 56 1B
+func as_hexstring(gobytes []byte, length int) (result string) {
+	for i := 0; i < length; i++ {
+		result += fmt.Sprintf(" %02X", gobytes[i])
+	}
+	return result[1:] // strip leading space
+}
+
+// return ui32v field
+func union_ui32v(cbytes [8]byte) (result *_Ctype_guint32) {
+	buf := bytes.NewBuffer(cbytes[:])
+	var ptr uint64
+	if err := binary.Read(buf, binary.LittleEndian, &ptr); err == nil { // read bytes as uint64
+		return (*_Ctype_guint32)(unsafe.Pointer(uintptr(ptr))) // convert the uint64 into a pointer
+	}
+	return nil
 }

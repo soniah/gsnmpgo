@@ -1,0 +1,84 @@
+#!/bin/bash
+#
+# Startup script for Verax SNMP Agent Simulator
+# Copyright (c) Verax Systems
+# 
+# chkconfig: 5 98 55
+# description: Verax SNMP Agent Simulator service
+#
+
+
+#######################################
+# Please verify the configuration     # 
+# file location.                      #
+#######################################
+
+# Path to configuration file (e.g. '/etc/verax.d/simulator.conf')
+CONF_SIM_FILE='/usr/local/vxsnmpsimulator/simulator.conf'
+
+
+# Please do not change the script beyond this line!
+
+for line in $(cat ${CONF_SIM_FILE}|grep -v '^#')
+do
+	eval "VS_${line}"
+done
+
+RUNCMD=""
+if [ "" != "$VS_SERVER_PORT" ] 
+then
+	RUNCMD="${RUNCMD} -p ${VS_SERVER_PORT}"
+fi
+
+if [ "" != "$VS_PRIMARY_INTERFACE" ] 
+then
+	RUNCMD="${RUNCMD} -d ${VS_PRIMARY_INTERFACE}"
+fi
+
+if [ "" != "$VS_SIMULATOR_CONFIG_FILE" ] 
+then
+	RUNCMD="${RUNCMD} -f ${VS_SIMULATOR_CONFIG_FILE}"
+fi
+
+if [ "" != "$VS_CREATE_INTERFACES" ] 
+then
+	RUNCMD="${RUNCMD} -c ${VS_CREATE_INTERFACES}"
+fi
+
+cd $VS_SIMULATOR_HOME
+
+case "$1" in
+    console)
+	${VS_JRE_HOME}java -jar $VS_SIMULATOR_HOME/jar/snmp-simulator-rmi-client.jar $@
+	;;
+    start) 
+        echo "Verax SNMP Agent Simulator. Copyright (c) Verax Systems. All rights reserved."
+	ulimit -n 100000
+	nohup ${VS_JRE_HOME}java -jar $VS_SIMULATOR_HOME/jar/snmp-simulator-server.jar $RUNCMD &> /dev/null &
+	
+        echo "Verax SNMP Agent Simulator started. Loading network configuration..."
+        sleep 2
+        ;;
+    stop)
+        echo "Stopping Verax SNMP Agent Simulator..."
+        cd $VS_SIMULATOR_HOME/conf
+	./stop "$RUNCMD"
+        ;;
+    status)
+        status=`ps -ef | grep "snmp-simulator-server.jar$RUNCMD" | grep -v grep`
+        if [ "$status" == "" ]
+        then
+            echo "Verax SNMP Agent Simulator stopped."
+        else
+            echo "Verax SNMP Agent Simulator running."
+            echo "Number of virtual interfaces created: `cat /tmp/created_interfaces.txt | wc -l`."
+        fi
+        exit 0
+        ;;
+    *)
+        echo "Usage: $0 {console|start|stop|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

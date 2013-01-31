@@ -32,13 +32,6 @@ gchar const *
 get_err_label(gint32 const id) {
 	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
 }
-
-// guint32 const *
-// union_guint32_star(gpointer data) {
-// 	GNetSnmpVarBind *vb = (GNetSnmpVarBind *) data;
-// 	return vb->value.ui32v;
-// }
-
 */
 import "C"
 
@@ -169,33 +162,45 @@ func Dump(out *_Ctype_GList) {
 		switch VarBindType(data._type) {
 
 		case GNET_SNMP_VARBIND_TYPE_NULL:
+			result += "NULL"
 
 		case GNET_SNMP_VARBIND_TYPE_OCTETSTRING:
-			result += union_to_string(data.value)
+			result += union_ui8v_string(data.value, data.value_len)
 
 		case GNET_SNMP_VARBIND_TYPE_OBJECTID:
-			guint32_ptr := union_to_guint32_ptr(data.value)
+			guint32_ptr := union_ui32v(data.value)
 			result += OidArrayToString(guint32_ptr, data.value_len)
 
 		case GNET_SNMP_VARBIND_TYPE_IPADDRESS:
+			result += union_ui8v_ipaddress(data.value, data.value_len)
 
 		case GNET_SNMP_VARBIND_TYPE_INTEGER32:
+			result += fmt.Sprintf("%d", union_i32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_UNSIGNED32:
+			result += fmt.Sprintf("%d", union_ui32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_COUNTER32:
+			result += fmt.Sprintf("%d", union_ui32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_TIMETICKS:
+			// TODO helper function to convert uint32 to "38 days, 15:56:15.00"
+			result += fmt.Sprintf("%d", union_ui32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_OPAQUE:
+			result += "TODO"
 
 		case GNET_SNMP_VARBIND_TYPE_COUNTER64:
+			result += fmt.Sprintf("%d", union_ui64(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT:
+			// do nothing
 
 		case GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE:
+			// do nothing
 
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
+			// do nothing
 
 		}
 

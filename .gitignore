@@ -9,4 +9,5 @@ poller64
 *.deb
 nstpomgmt01:*
 gosnmp
+gsnmp
 *.go_cog

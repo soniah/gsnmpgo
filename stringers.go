@@ -5,8 +5,6 @@ package gsnmp
 // license that can be found in the LICENSE file.
 
 /*
-#cgo pkg-config: glib-2.0 gsnmp
-
 #include <gsnmp/ber.h>
 #include <gsnmp/pdu.h>
 #include <gsnmp/dispatch.h>
@@ -19,6 +17,9 @@ package gsnmp
 
 #include <stdlib.h>
 #include <stdio.h>
+
+// TODO rewrite oids_to_string() in Go
+
 #define MAX_OIDS_STR_LEN 1000
 
 static void
@@ -78,31 +79,6 @@ func OidArrayToString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string)
 	}
 	return result[1:]
 }
-
-// OidArrayToString2 converts an oid from 
-// func OidArrayToString2(oid [8]byte) (result string) {
-// 	// size := int(unsafe.Sizeof(oid))
-// 	length := int(oid_len)
-// 	// gbytes := C.GoBytes(unsafe.Pointer(oid), (_Ctype_int)(size*length))
-// 
-// 	// copy array into slice. TODO - better way?
-// 	var gbytes []byte
-// 	for i := 0; i < 8; i++ {
-// 		gbytes = append(gbytes, oid[i])
-// 
-// 	}
-// 
-// 	buf := bytes.NewBuffer(gbytes)
-// 	for i := 0; i < length; i++ {
-// 		var out uint32
-// 		if err := binary.Read(buf, binary.LittleEndian, &out); err == nil {
-// 			result = result + fmt.Sprintf(".%d", out)
-// 		} else {
-// 			return "<error converting oid>"
-// 		}
-// 	}
-// 	return result[1:]
-// }
 
 // OidToString returns the string represention of the OIDs in a GList
 func OidToString(vbl *_Ctype_GList) string {
