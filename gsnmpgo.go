@@ -44,7 +44,7 @@ type QueryResult struct {
 
 type QueryResults []QueryResult
 
-// snmp Query
+// Snmp Query - main entry point to library.
 func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
 	parsed_uri, err := ParseURI(uri)
 	if err != nil {
