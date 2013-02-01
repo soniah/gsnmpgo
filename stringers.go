@@ -31,6 +31,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -64,6 +65,16 @@ func GListOidsString(vbl *_Ctype_GList) (result string) {
 		vbl = vbl.next
 	}
 	panic(fmt.Sprintf("%s: GListOidsString(): fell out of for loop", libname()))
+}
+
+// AsString returns the string representation of an Oid
+func OidAsString(o []int) string {
+	if len(o) == 0 {
+		return ""
+	}
+	result := fmt.Sprintf("%v", o)
+	result = result[1 : len(result)-1] // strip [ ] of Array representation
+	return "." + strings.Join(strings.Split(result, " "), ".")
 }
 
 // Stringer for *_Ctype_GURI
@@ -184,6 +195,9 @@ func (t *_Ctype_GNetSnmpTAddress) String() string {
 ///////////
 // enums //
 ///////////
+
+// TODO stringer is only on _Ctype_GNetSnmpVarBindType, not VarBindType - fix??
+// all enums - enumconv
 
 /*[[[gocog
 package main

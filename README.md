@@ -12,15 +12,20 @@ See dev branches for latest commits.
 
 Sonia Hamilton, sonia@snowfrog.net, http://www.snowfrog.net.
 
-**See also:** http://godoc.org/github.com/soniah/gsnmpgo
+Documentation
+-------------
 
-Install
--------
+See http://godoc.org/github.com/soniah/gsnmpgo or your local
+go doc server for full documentation:
 
-```shell
-sudo aptitude install #some gsnmp, glib, gnet dev libraries#
-go get github.com/soniah/gsnmpgo
-```
+    cd $GOPATH
+    godoc -http=:6060 &
+    $preferred_browser http://localhost:6060/pkg &
+
+Installation
+------------
+
+See Documentation.
 
 License
 -------

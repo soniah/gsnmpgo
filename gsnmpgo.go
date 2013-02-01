@@ -1,5 +1,3 @@
-// Package gsnmpgo is a go/cgo wrapper around gsnmp. It is under development,
-// therefore API's may/will change, and doco/error handling/tests are minimal.
 package gsnmpgo
 
 // Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
@@ -39,9 +37,52 @@ import (
 
 var _ = reflect.DeepEqual(0, 1) // dummy
 
-// libname returns the name of this library, for generating error messages.
-func libname() string {
-	return "gsnmpgo"
+type QueryResult struct {
+	Oid   string
+	Value Varbinder
+}
+
+type QueryResults []QueryResult
+
+// snmp Query
+func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
+	parsed_uri, err := ParseURI(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	vbl, uritype, err := ParsePath(uri, parsed_uri)
+	defer UriDelete(parsed_uri)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := NewUri(uri, version, parsed_uri)
+	if err != nil {
+		return nil, err
+	}
+
+	switch UriType(uritype) {
+	case GNET_SNMP_URI_GET:
+		vbl_results, err := CGet(session, vbl)
+		if err != nil {
+			return nil, err
+		}
+		return ConvertResults(vbl_results), nil // TODO no err from decode?
+	case GNET_SNMP_URI_NEXT:
+		fmt.Println("doing GNET_SNMP_URI_NEXT")
+	case GNET_SNMP_URI_WALK:
+		fmt.Println("doing GNET_SNMP_URI_WALK")
+	}
+	panic(fmt.Sprintf("%s: Query(): fell out of switch", libname()))
+}
+
+// dump results - convenience function
+func Dump(results QueryResults) {
+	fmt.Println("Dump:")
+	for _, result := range results {
+		fmt.Printf("%T:%s:%s\n", result.Value, result.Oid, result.Value)
+	}
 }
 
 // ParseURI parses an SNMP URI into fields.
@@ -118,11 +159,10 @@ func NewUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *
 	return session, nil
 }
 
-// Get does an SNMP get.
+// Do an SNMP Get.
 //
-// It returns it results in C form, another function will convert the returned
-// Glist to a Go struct.
-func Get(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
+// Results are returned in C form, use ConvertResults() to convert to a Go struct.
+func CGet(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
 	var gerror *C.GError
 	out := C.gnet_snmp_sync_get(session, vbl, &gerror)
 
@@ -142,66 +182,69 @@ func Get(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
 	return out, nil
 }
 
-func Dump(out *_Ctype_GList) {
-	var result string
+// ConvertResults converts C results to a Go struct.
+func ConvertResults(out *_Ctype_GList) (results QueryResults) {
 	for {
 		if out == nil {
-			fmt.Printf("result:\n%s", result)
-			return
+			// finished
+			return results
 		}
-		data := (*C.GNetSnmpVarBind)(out.data) // gsnmpgo._Ctype_gpointer -> *gsnmpgo._Ctype_GNetSnmpVarBind
-		oid := GIntArrayOidString(data.oid, data.oid_len)
-		result += oid + ":"
-		result += fmt.Sprintf("%s", data._type) + ":"
 
-		switch VarBindType(data._type) {
+		// another result: initialise
+		data := (*C.GNetSnmpVarBind)(out.data)
+		oid := GIntArrayOidString(data.oid, data.oid_len)
+		result := QueryResult{Oid: oid}
+		var value Varbinder
+
+		// convert C values to Go values
+		vbt := VarBindType(data._type)
+		switch vbt {
 
 		case GNET_SNMP_VARBIND_TYPE_NULL:
-			result += "NULL"
+			value = new(VBT_Null)
 
 		case GNET_SNMP_VARBIND_TYPE_OCTETSTRING:
-			result += union_ui8v_string(data.value, data.value_len)
+			value = VBT_OctetString(union_ui8v_string(data.value, data.value_len))
 
 		case GNET_SNMP_VARBIND_TYPE_OBJECTID:
 			guint32_ptr := union_ui32v(data.value)
-			result += GIntArrayOidString(guint32_ptr, data.value_len)
+			value = VBT_ObjectID(GIntArrayOidString(guint32_ptr, data.value_len))
 
 		case GNET_SNMP_VARBIND_TYPE_IPADDRESS:
-			result += union_ui8v_ipaddress(data.value, data.value_len)
+			value = VBT_IPAddress(union_ui8v_ipaddress(data.value, data.value_len))
 
 		case GNET_SNMP_VARBIND_TYPE_INTEGER32:
-			result += fmt.Sprintf("%d", union_i32(data.value))
+			value = VBT_Integer32(union_i32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_UNSIGNED32:
-			result += fmt.Sprintf("%d", union_ui32(data.value))
+			value = VBT_Unsigned32(union_ui32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_COUNTER32:
-			result += fmt.Sprintf("%d", union_ui32(data.value))
+			value = VBT_Counter32(union_ui32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_TIMETICKS:
-			// TODO helper function to convert uint32 to "38 days, 15:56:15.00"
-			result += fmt.Sprintf("%d", union_ui32(data.value))
+			value = VBT_Timeticks(union_ui32(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_OPAQUE:
-			result += union_ui8v_hexstring(data.value, data.value_len)
+			value = VBT_Opaque(union_ui8v_hexstring(data.value, data.value_len))
 
 		case GNET_SNMP_VARBIND_TYPE_COUNTER64:
-			result += fmt.Sprintf("%d", union_ui64(data.value))
+			value = VBT_Counter64(union_ui64(data.value))
 
 		case GNET_SNMP_VARBIND_TYPE_NOSUCHOBJECT:
-			// do nothing
+			value = new(VBT_NoSuchObject)
 
 		case GNET_SNMP_VARBIND_TYPE_NOSUCHINSTANCE:
-			// do nothing
+			value = new(VBT_NoSuchInstance)
 
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
-			// do nothing
-
+			value = new(VBT_EndOfMibView)
 		}
+		result.Value = value
+		results = append(results, result)
 
 		// move on to next element in list
-		result += "\n"
 		out = out.next
 	}
-	panic(fmt.Sprintf("%s: Dump(): fell out of for loop", libname()))
+	panic(fmt.Sprintf("%s: ConvertResults(): fell out of for loop", libname()))
 }

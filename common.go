@@ -6,17 +6,7 @@ package gsnmpgo
 
 // common.go contains "common" or miscellanous functions
 
-import (
-	"fmt"
-	"strings"
-)
-
-// AsString returns the string representation of an Oid
-func OidAsString(o []int) string {
-	if len(o) == 0 {
-		return ""
-	}
-	result := fmt.Sprintf("%v", o)
-	result = result[1 : len(result)-1] // strip [ ] of Array representation
-	return "." + strings.Join(strings.Split(result, " "), ".")
+// libname returns the name of this library, for generating error messages.
+func libname() string {
+	return "gsnmpgo"
 }
