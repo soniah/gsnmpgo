@@ -62,19 +62,12 @@ func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
 		return nil, err
 	}
 
-	switch UriType(uritype) {
-	case GNET_SNMP_URI_GET:
-		vbl_results, err := CGet(session, vbl)
-		if err != nil {
-			return nil, err
-		}
-		return ConvertResults(vbl_results), nil // TODO no err from decode?
-	case GNET_SNMP_URI_NEXT:
-		fmt.Println("doing GNET_SNMP_URI_NEXT")
-	case GNET_SNMP_URI_WALK:
-		fmt.Println("doing GNET_SNMP_URI_WALK")
+	// TODO must do a free (g_list_foreach(gnet_snmp_varbind_delete), g_list_free) on vbl_results
+	vbl_results, err := QuerySync(session, vbl, uritype)
+	if err != nil {
+		return nil, err
 	}
-	panic(fmt.Sprintf("%s: Query(): fell out of switch", libname()))
+	return ConvertResults(vbl_results), nil // TODO no err from decode?
 }
 
 // dump results - convenience function
@@ -159,12 +152,27 @@ func NewUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *
 	return session, nil
 }
 
-// Do an SNMP Get.
+// Do an gsnmp library sync_* query
 //
 // Results are returned in C form, use ConvertResults() to convert to a Go struct.
-func CGet(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
+func QuerySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
+	uritype _Ctype_GNetSnmpUriType) (*_Ctype_GList, error) {
 	var gerror *C.GError
-	out := C.gnet_snmp_sync_get(session, vbl, &gerror)
+	var out *_Ctype_GList
+
+	switch UriType(uritype) {
+	case GNET_SNMP_URI_GET:
+		fmt.Println("doing GNET_SNMP_URI_GET")
+		out = C.gnet_snmp_sync_get(session, vbl, &gerror)
+	case GNET_SNMP_URI_NEXT:
+		fmt.Println("doing GNET_SNMP_URI_NEXT")
+		out = C.gnet_snmp_sync_getnext(session, vbl, &gerror)
+	case GNET_SNMP_URI_WALK:
+		fmt.Println("doing GNET_SNMP_URI_WALK")
+		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
+	default:
+		panic(fmt.Sprintf("%s: QueryC(): unknown uritype", libname()))
+	}
 
 	// error handling
 	if gerror != nil {
@@ -172,10 +180,20 @@ func CGet(session *_Ctype_GNetSnmp, vbl *_Ctype_GList) (*_Ctype_GList, error) {
 		C.g_clear_error(&gerror)
 		return out, fmt.Errorf("%s: %s", libname(), err_string)
 	}
-	if PduError(session.error_status) != GNET_SNMP_PDU_ERR_NOERROR {
-		es := C.get_err_label(session.error_status)
-		err_string := C.GoString((*_Ctype_char)(es))
-		return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
+	err_status := PduError(session.error_status)
+	switch UriType(uritype) {
+	case GNET_SNMP_URI_WALK:
+		if err_status != GNET_SNMP_PDU_ERR_NOERROR && err_status != GNET_SNMP_PDU_ERR_NOSUCHNAME {
+			es := C.get_err_label(session.error_status)
+			err_string := C.GoString((*_Ctype_char)(es))
+			return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
+		}
+	default:
+		if err_status != GNET_SNMP_PDU_ERR_NOERROR {
+			es := C.get_err_label(session.error_status)
+			err_string := C.GoString((*_Ctype_char)(es))
+			return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
+		}
 	}
 
 	// results
