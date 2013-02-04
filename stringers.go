@@ -35,8 +35,8 @@ import (
 	"unsafe"
 )
 
-// GIntArrayOidString converts an oid from C array of guint32's to a Go string
-func GIntArrayOidString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string) {
+// gIntArrayOidString converts an oid from C array of guint32's to a Go string
+func gIntArrayOidString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string) {
 	size := int(unsafe.Sizeof(oid))
 	length := int(oid_len)
 	gbytes := C.GoBytes(unsafe.Pointer(oid), (_Ctype_int)(size*length))
@@ -53,21 +53,21 @@ func GIntArrayOidString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result strin
 	return result[1:] // string leading dot
 }
 
-// GListOidsString returns the string represention of the OIDs in a GList
-func GListOidsString(vbl *_Ctype_GList) (result string) {
+// gListOidsString returns the string represention of the OIDs in a GList
+func gListOidsString(vbl *_Ctype_GList) (result string) {
 	for {
 		if vbl == nil {
 			return result[1:] // remove leading :
 		}
 		data := (*C.GNetSnmpVarBind)(vbl.data) // gsnmpgo._Ctype_gpointer -> *gsnmpgo._Ctype_GNetSnmpVarBind
-		oid := GIntArrayOidString(data.oid, data.oid_len)
+		oid := gIntArrayOidString(data.oid, data.oid_len)
 		result += ":" + oid
 		vbl = vbl.next
 	}
-	panic(fmt.Sprintf("%s: GListOidsString(): fell out of for loop", libname()))
+	panic(fmt.Sprintf("%s: gListOidsString(): fell out of for loop", libname()))
 }
 
-// AsString returns the string representation of an Oid
+// Converts an OID in a slice of int format (eg []int{1, 3, 6, 1} to a string.
 func OidAsString(o []int) string {
 	if len(o) == 0 {
 		return ""

@@ -5,8 +5,8 @@ A go/cgo wrapper around gsnmp.
 
 Under development, therefore:
 
-* API's may/will change
-* doco, error handling, tests are minimal
+* API's may change
+* tests are minimal
 
 See dev branches for latest commits.
 
@@ -25,7 +25,7 @@ go doc server for full documentation:
 Installation
 ------------
 
-See Documentation.
+See documentation.
 
 License
 -------

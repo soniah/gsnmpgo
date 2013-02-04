@@ -44,56 +44,56 @@ type QueryResult struct {
 
 type QueryResults []QueryResult
 
-// Snmp Query - main entry point to library.
+// Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
 func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
-	parsed_uri, err := ParseURI(uri)
+	parsed_uri, err := parseURI(uri)
 	if err != nil {
 		return nil, err
 	}
 
-	vbl, uritype, err := ParsePath(uri, parsed_uri)
-	defer UriDelete(parsed_uri)
+	vbl, uritype, err := parsePath(uri, parsed_uri)
+	defer uriDelete(parsed_uri)
 	if err != nil {
 		return nil, err
 	}
 
-	session, err := NewUri(uri, version, parsed_uri)
+	session, err := newUri(uri, version, parsed_uri)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO must do a free (g_list_foreach(gnet_snmp_varbind_delete), g_list_free) on vbl_results
-	vbl_results, err := QuerySync(session, vbl, uritype)
+	vbl_results, err := querySync(session, vbl, uritype)
 	if err != nil {
 		return nil, err
 	}
-	return ConvertResults(vbl_results), nil // TODO no err from decode?
+	return convertResults(vbl_results), nil // TODO no err from decode?
 }
 
-// dump results - convenience function
+// Dump is a convenience function for printing the results of a Query.
 func Dump(results QueryResults) {
 	fmt.Println("Dump:")
 	for _, result := range results {
-		fmt.Printf("%T:%s:%s\n", result.Value, result.Oid, result.Value)
+		fmt.Printf("%T:%s STRING:%s INTEGER:%d\n", result.Value, result.Oid, result.Value, result.Value.Integer())
 	}
 }
 
-// ParseURI parses an SNMP URI into fields.
+// parseURI parses an SNMP URI into fields.
 //
 // The generic URI parsing is done by gnet_uri_new(), and the SNMP specific
 // portions by gnet_snmp_parse_uri(). Only basic URI validation is done here,
-// more is done by ParsePath()
+// more is done by parsePath()
 //
 // Example:
 //
 //    uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
-//    parsed_uri, err := gsnmpgo.ParseURI(uri)
+//    parsed_uri, err := gsnmpgo.parseURI(uri)
 //    if err != nil {
 //    	fmt.Println(err)
 //    	os.Exit(1)
 //    }
-//    fmt.Println("ParseURI():", parsed_uri)
-func ParseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
+//    fmt.Println("parseURI():", parsed_uri)
+func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	curi := (*C.gchar)(C.CString(uri))
 	defer C.free(unsafe.Pointer(curi))
 
@@ -105,7 +105,7 @@ func ParseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	return parsed_uri, nil
 }
 
-// ParsePath parses an SNMP URI.
+// parsePath parses an SNMP URI.
 //
 // The uritype will default to GNET_SNMP_URI_GET. If the uri ends in:
 //
@@ -115,7 +115,7 @@ func ParseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 //
 // See RFC 4088 "Uniform Resource Identifier (URI) Scheme for the Simple
 // Network Management Protocol (SNMP)" for further documentation.
-func ParsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
+func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
 	var gerror *C.GError
 	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
 	if rv == 0 {
@@ -125,15 +125,15 @@ func ParsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype 
 	return vbl, uritype, nil
 }
 
-// UriDelete frees the memory used by a parsed_uri.
+// uriDelete frees the memory used by a parsed_uri.
 //
-// A defered call to UriDelete should be made after ParsePath().
-func UriDelete(parsed_uri *_Ctype_GURI) {
+// A defered call to uriDelete should be made after parsePath().
+func uriDelete(parsed_uri *_Ctype_GURI) {
 	C.gnet_uri_delete(parsed_uri)
 }
 
-// NewUri creates a session from a parsed uri.
-func NewUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
+// newUri creates a session from a parsed uri.
+func newUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
 	var gerror *C.GError
 	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
 
@@ -154,21 +154,18 @@ func NewUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *
 
 // Do an gsnmp library sync_* query
 //
-// Results are returned in C form, use ConvertResults() to convert to a Go struct.
-func QuerySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
+// Results are returned in C form, use convertResults() to convert to a Go struct.
+func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
 	uritype _Ctype_GNetSnmpUriType) (*_Ctype_GList, error) {
 	var gerror *C.GError
 	var out *_Ctype_GList
 
 	switch UriType(uritype) {
 	case GNET_SNMP_URI_GET:
-		fmt.Println("doing GNET_SNMP_URI_GET")
 		out = C.gnet_snmp_sync_get(session, vbl, &gerror)
 	case GNET_SNMP_URI_NEXT:
-		fmt.Println("doing GNET_SNMP_URI_NEXT")
 		out = C.gnet_snmp_sync_getnext(session, vbl, &gerror)
 	case GNET_SNMP_URI_WALK:
-		fmt.Println("doing GNET_SNMP_URI_WALK")
 		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
 	default:
 		panic(fmt.Sprintf("%s: QueryC(): unknown uritype", libname()))
@@ -200,8 +197,8 @@ func QuerySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
 	return out, nil
 }
 
-// ConvertResults converts C results to a Go struct.
-func ConvertResults(out *_Ctype_GList) (results QueryResults) {
+// convertResults converts C results to a Go struct.
+func convertResults(out *_Ctype_GList) (results QueryResults) {
 	for {
 		if out == nil {
 			// finished
@@ -210,7 +207,7 @@ func ConvertResults(out *_Ctype_GList) (results QueryResults) {
 
 		// another result: initialise
 		data := (*C.GNetSnmpVarBind)(out.data)
-		oid := GIntArrayOidString(data.oid, data.oid_len)
+		oid := gIntArrayOidString(data.oid, data.oid_len)
 		result := QueryResult{Oid: oid}
 		var value Varbinder
 
@@ -226,7 +223,7 @@ func ConvertResults(out *_Ctype_GList) (results QueryResults) {
 
 		case GNET_SNMP_VARBIND_TYPE_OBJECTID:
 			guint32_ptr := union_ui32v(data.value)
-			value = VBT_ObjectID(GIntArrayOidString(guint32_ptr, data.value_len))
+			value = VBT_ObjectID(gIntArrayOidString(guint32_ptr, data.value_len))
 
 		case GNET_SNMP_VARBIND_TYPE_IPADDRESS:
 			value = VBT_IPAddress(union_ui8v_ipaddress(data.value, data.value_len))
@@ -264,5 +261,10 @@ func ConvertResults(out *_Ctype_GList) (results QueryResults) {
 		// move on to next element in list
 		out = out.next
 	}
-	panic(fmt.Sprintf("%s: ConvertResults(): fell out of for loop", libname()))
+	panic(fmt.Sprintf("%s: convertResults(): fell out of for loop", libname()))
+}
+
+// libname returns the name of this library, for generating error messages.
+func libname() string {
+	return "gsnmpgo"
 }
