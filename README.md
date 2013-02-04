@@ -1,14 +1,10 @@
 gsnmpgo
 ======
 
-A go/cgo wrapper around gsnmp.
+gsnmpgo is a go/cgo wrapper around gsnmp; it currently provides support
+for snmp v1 and v2c, and snmp get, snmp getnext, and snmp walk.
 
-Under development, therefore:
-
-* API's may change
-* tests are minimal
-
-See dev branches for latest commits.
+gsnmpgo is pre 1.0, therefore API's may change, and tests are minimal.
 
 Sonia Hamilton, sonia@snowfrog.net, http://www.snowfrog.net.
 
