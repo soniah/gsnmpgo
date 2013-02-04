@@ -35,7 +35,7 @@ SUMMARY
 
 Here is a summary of usage:
 
-    // do an snmp get; RFC 4088 is used for uri's
+    // do an snmp get; RFC 4088 is used for uris
     uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0)`
     results, err := gsnmpgo.Query(uri, gsnmpgo.GNET_SNMP_V2C)
     if err != nil {
@@ -111,6 +111,19 @@ Sonia Hamilton, sonia@snowfrog.net, http://www.snowfrog.net.
 */
 package gsnmpgo
 
-// Copyright 2013 Sonia Hamilton <sonia@snowfrog.net>. All rights
-// reserved.  Use of this source code is governed by a 3-clause BSD
-// license that can be found in the LICENSE file.
+// gsnmpgo is a go/cgo wrapper around gsnmp.
+//
+// Copyright (C) 2012-2013 Sonia Hamilton sonia@snowfrog.net.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
