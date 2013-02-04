@@ -4,7 +4,7 @@ therefore API's may change, and tests are minimal.
 
 INSTALLATION
 
-(tested on Ubuntu 12.04.1)
+(tested on Ubuntu Precise 12.04.1)
 
     sudo aptitude install # TODO some gsnmp, glib, gnet dev libraries
     go get -d github.com/soniah/gsnmpgo
