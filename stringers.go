@@ -209,9 +209,6 @@ func (t *_Ctype_GNetSnmpTAddress) String() string {
 // enums //
 ///////////
 
-// TODO stringer is only on _Ctype_GNetSnmpVarBindType, not VarBindType - fix??
-// all enums - enumconv
-
 /*[[[gocog
 package main
 import ("github.com/soniah/gsnmpgo/enumconv")
@@ -241,12 +238,9 @@ const (
 	GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW
 )
 
-// Stringer for _Ctype_GNetSnmpVarBindType
-//
-// C:
-//    gsnmp-0.3.0/src/pdu.h
-func (varbindtype _Ctype_GNetSnmpVarBindType) String() string {
-	switch VarBindType(varbindtype) {
+// Stringer for VarBindType
+func (varbindtype VarBindType) String() string {
+	switch varbindtype {
 	case GNET_SNMP_VARBIND_TYPE_NULL:
 		return "GNET_SNMP_VARBIND_TYPE_NULL"
 	case GNET_SNMP_VARBIND_TYPE_OCTETSTRING:
@@ -274,7 +268,15 @@ func (varbindtype _Ctype_GNetSnmpVarBindType) String() string {
 	case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
 		return "GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW"
 	}
-	return "UNKNOWN _Ctype_GNetSnmpVarBindType"
+	return "UNKNOWN VarBindType"
+}
+
+// Stringer for _Ctype_GNetSnmpVarBindType
+//
+// C:
+//    gsnmp-0.3.0/src/pdu.h
+func (varbindtype _Ctype_GNetSnmpVarBindType) String() string {
+	return fmt.Sprintf("%s", VarBindType(varbindtype))
 }
 
 //[[[end]]]
@@ -298,12 +300,9 @@ const (
 	GNET_SNMP_URI_WALK
 )
 
-// Stringer for _Ctype_GNetSnmpUriType
-//
-// C:
-//    /usr/include/gsnmp/utils.h
-func (uritype _Ctype_GNetSnmpUriType) String() string {
-	switch UriType(uritype) {
+// Stringer for UriType
+func (uritype UriType) String() string {
+	switch uritype {
 	case GNET_SNMP_URI_GET:
 		return "GNET_SNMP_URI_GET"
 	case GNET_SNMP_URI_NEXT:
@@ -311,7 +310,15 @@ func (uritype _Ctype_GNetSnmpUriType) String() string {
 	case GNET_SNMP_URI_WALK:
 		return "GNET_SNMP_URI_WALK"
 	}
-	return "UNKNOWN _Ctype_GNetSnmpUriType"
+	return "UNKNOWN UriType"
+}
+
+// Stringer for _Ctype_GNetSnmpUriType
+//
+// C:
+//    /usr/include/gsnmp/utils.h
+func (uritype _Ctype_GNetSnmpUriType) String() string {
+	return fmt.Sprintf("%s", UriType(uritype))
 }
 
 //[[[end]]]
@@ -336,12 +343,9 @@ const (
 	GNET_SNMP_SECMODEL_SNMPV3
 )
 
-// Stringer for _Ctype_GNetSnmpSecModel
-//
-// C:
-//    gsnmp-0.3.0/src/security.h
-func (secmodel _Ctype_GNetSnmpSecModel) String() string {
-	switch SecModel(secmodel) {
+// Stringer for SecModel
+func (secmodel SecModel) String() string {
+	switch secmodel {
 	case GNET_SNMP_SECMODEL_ANY:
 		return "GNET_SNMP_SECMODEL_ANY"
 	case GNET_SNMP_SECMODEL_SNMPV1:
@@ -351,7 +355,15 @@ func (secmodel _Ctype_GNetSnmpSecModel) String() string {
 	case GNET_SNMP_SECMODEL_SNMPV3:
 		return "GNET_SNMP_SECMODEL_SNMPV3"
 	}
-	return "UNKNOWN _Ctype_GNetSnmpSecModel"
+	return "UNKNOWN SecModel"
+}
+
+// Stringer for _Ctype_GNetSnmpSecModel
+//
+// C:
+//    gsnmp-0.3.0/src/security.h
+func (secmodel _Ctype_GNetSnmpSecModel) String() string {
+	return fmt.Sprintf("%s", SecModel(secmodel))
 }
 
 //[[[end]]]
@@ -375,12 +387,9 @@ const (
 	GNET_SNMP_SECLEVEL_AP
 )
 
-// Stringer for _Ctype_GNetSnmpSecLevel
-//
-// C:
-//    gsnmp-0.3.0/src/security.h
-func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
-	switch SecLevel(seclevel) {
+// Stringer for SecLevel
+func (seclevel SecLevel) String() string {
+	switch seclevel {
 	case GNET_SNMP_SECLEVEL_NANP:
 		return "GNET_SNMP_SECLEVEL_NANP"
 	case GNET_SNMP_SECLEVEL_ANP:
@@ -388,7 +397,15 @@ func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
 	case GNET_SNMP_SECLEVEL_AP:
 		return "GNET_SNMP_SECLEVEL_AP"
 	}
-	return "UNKNOWN _Ctype_GNetSnmpSecLevel"
+	return "UNKNOWN SecLevel"
+}
+
+// Stringer for _Ctype_GNetSnmpSecLevel
+//
+// C:
+//    gsnmp-0.3.0/src/security.h
+func (seclevel _Ctype_GNetSnmpSecLevel) String() string {
+	return fmt.Sprintf("%s", SecLevel(seclevel))
 }
 
 //[[[end]]]
@@ -436,12 +453,9 @@ const (
 	GNET_SNMP_PDU_ERR_INCONSISTENTNAME
 )
 
-// Stringer for _Ctype_gint32
-//
-// C:
-//    gsnmp-0.3.0/src/pdu.h
-func (pduerror _Ctype_gint32) String() string {
-	switch PduError(pduerror) {
+// Stringer for PduError
+func (pduerror PduError) String() string {
+	switch pduerror {
 	case GNET_SNMP_PDU_ERR_DONE:
 		return "GNET_SNMP_PDU_ERR_DONE"
 	case GNET_SNMP_PDU_ERR_PROCEDURE:
@@ -489,7 +503,15 @@ func (pduerror _Ctype_gint32) String() string {
 	case GNET_SNMP_PDU_ERR_INCONSISTENTNAME:
 		return "GNET_SNMP_PDU_ERR_INCONSISTENTNAME"
 	}
-	return "UNKNOWN _Ctype_gint32"
+	return "UNKNOWN PduError"
+}
+
+// Stringer for _Ctype_gint32
+//
+// C:
+//    gsnmp-0.3.0/src/pdu.h
+func (pduerror _Ctype_gint32) String() string {
+	return fmt.Sprintf("%s", PduError(pduerror))
 }
 
 //[[[end]]]
@@ -514,12 +536,9 @@ const (
 	GNET_SNMP_V3
 )
 
-// Stringer for _Ctype_GNetSnmpVersion
-//
-// C:
-//    gsnmp-0.3.0/src/message.h
-func (snmpversion _Ctype_GNetSnmpVersion) String() string {
-	switch SnmpVersion(snmpversion) {
+// Stringer for SnmpVersion
+func (snmpversion SnmpVersion) String() string {
+	switch snmpversion {
 	case GNET_SNMP_V1:
 		return "GNET_SNMP_V1"
 	case GNET_SNMP_V2C:
@@ -529,7 +548,15 @@ func (snmpversion _Ctype_GNetSnmpVersion) String() string {
 	case GNET_SNMP_V3:
 		return "GNET_SNMP_V3"
 	}
-	return "UNKNOWN _Ctype_GNetSnmpVersion"
+	return "UNKNOWN SnmpVersion"
+}
+
+// Stringer for _Ctype_GNetSnmpVersion
+//
+// C:
+//    gsnmp-0.3.0/src/message.h
+func (snmpversion _Ctype_GNetSnmpVersion) String() string {
+	return fmt.Sprintf("%s", SnmpVersion(snmpversion))
 }
 
 //[[[end]]]

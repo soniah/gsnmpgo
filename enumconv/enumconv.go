@@ -62,6 +62,32 @@ func Write(gotypename string, ctypename string, enums []string, ccode string, st
 	fmt.Println(")")
 	fmt.Println()
 
+	// Go type Stringer
+	///////////////////
+
+	// function comment header
+	fmt.Printf("// Stringer for %s\n", gotypename)
+
+	// start stringer function
+	receiver_name := strings.ToLower(gotypename)
+	fmt.Printf("func (%s %s) String() string {\n", receiver_name, gotypename)
+
+	// switch statement
+	fmt.Printf("	switch %s {\n", receiver_name)
+	for _, enum := range enums {
+		fmt.Printf("	case %s:\n", enum)
+		fmt.Printf("		return \"%s\"\n", enum)
+	}
+	fmt.Println("	}")
+	fmt.Printf("	return \"UNKNOWN %s\"\n", gotypename)
+
+	// end stringer function
+	fmt.Println("}")
+	fmt.Println()
+
+	// C type Stringer
+	//////////////////
+
 	// function comment header
 	fmt.Printf("// Stringer for %s\n//\n", ctypename)
 
@@ -72,16 +98,11 @@ func Write(gotypename string, ctypename string, enums []string, ccode string, st
 	}
 
 	// start stringer function
-	fmt.Printf("func (%s %s) String() string {\n", strings.ToLower(gotypename), ctypename)
+	fmt.Printf("func (%s %s) String() string {\n", receiver_name, ctypename)
 
-	// switch statement
-	fmt.Printf("	switch %s(%s) {\n", gotypename, strings.ToLower(gotypename))
-	for _, enum := range enums {
-		fmt.Printf("	case %s:\n", enum)
-		fmt.Printf("		return \"%s\"\n", enum)
-	}
-	fmt.Println("	}")
-	fmt.Printf("	return \"UNKNOWN %s\"\n", ctypename)
+	// stringer body - use gotype stringer
+	ins_string := `	fmt.Sprintf("%s", `
+	fmt.Printf("	return %s %s(%s))\n", ins_string, gotypename, receiver_name)
 
 	// end stringer function
 	fmt.Println("}")

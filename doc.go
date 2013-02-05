@@ -92,7 +92,9 @@ Often you just want the result as a string or a number, Varbinder is
 an interface that provides two convenience functions:
 
     type Varbinder interface {
-        Integer() int64
+        // Integer() needs to handle both signed numbers (int32), as well as
+        // unsigned int 64 (uint64). Therefore it returns a *big.Int.
+        Integer() *big.Int
         fmt.Stringer
     }
 

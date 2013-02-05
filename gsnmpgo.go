@@ -39,6 +39,13 @@ gchar const *
 get_err_label(gint32 const id) {
 	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
 }
+
+// convenience wrapper for freeing a var bind list
+static void
+vbl_delete(GList *list) {
+	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
+	g_list_free(list);
+}
 */
 import "C"
 
@@ -75,12 +82,12 @@ func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
 		return nil, err
 	}
 
-	// TODO must do a free (g_list_foreach(gnet_snmp_varbind_delete), g_list_free) on vbl_results
 	vbl_results, err := querySync(session, vbl, uritype)
+	defer vblDelete(vbl_results)
 	if err != nil {
 		return nil, err
 	}
-	return convertResults(vbl_results), nil // TODO no err from decode?
+	return convertResults(vbl_results), nil
 }
 
 // Dump is a convenience function for printing the results of a Query.
@@ -145,6 +152,14 @@ func uriDelete(parsed_uri *_Ctype_GURI) {
 	C.gnet_uri_delete(parsed_uri)
 }
 
+// vblDelete frees the memory used by a var bind list.
+//
+// A deferred call to vblDelete should be made after call to
+// gnet_snmp_sync_get (or similar).
+func vblDelete(vbl *_Ctype_GList) {
+	C.vbl_delete(vbl)
+}
+
 // newUri creates a session from a parsed uri.
 func newUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
 	var gerror *C.GError
@@ -181,7 +196,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
 	case GNET_SNMP_URI_WALK:
 		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
 	default:
-		panic(fmt.Sprintf("%s: QueryC(): unknown uritype", libname()))
+		return nil, fmt.Errorf("%s: QueryC(): unknown uritype", libname())
 	}
 
 	// error handling
