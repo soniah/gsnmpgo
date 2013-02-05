@@ -193,7 +193,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
 	case GNET_SNMP_URI_WALK:
 		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
 	default:
-		return nil, fmt.Errorf("%s: QueryC(): unknown uritype", libname())
+		return nil, fmt.Errorf("%s: querySync(): unknown uritype", libname())
 	}
 
 	// error handling
