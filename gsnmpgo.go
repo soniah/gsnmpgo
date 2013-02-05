@@ -51,11 +51,8 @@ import "C"
 
 import (
 	"fmt"
-	"reflect"
 	"unsafe"
 )
-
-var _ = reflect.DeepEqual(0, 1) // dummy
 
 type QueryResult struct {
 	Oid   string
