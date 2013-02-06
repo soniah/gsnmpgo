@@ -37,7 +37,13 @@ Here is a summary of usage:
 
     // do an snmp get; RFC 4088 is used for uris
     uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0)`
-    results, err := gsnmpgo.Query(uri, gsnmpgo.GNET_SNMP_V2C)
+    params := &gsnmpgo.QueryParams{
+        Uri:     uri,
+        Version: gsnmpgo.GNET_SNMP_V2C,
+        Timeout: 200,
+        Retries: 2,
+    }
+    results, err := gsnmpgo.Query(params)
     if err != nil {
         fmt.Println(err)
         os.Exit(1)
@@ -54,8 +60,8 @@ Here is a summary of usage:
     // or if you just want to check your results, use Dump()
     gsnmpgo.Dump(results)
 
-	// turn on debugging
-	gsnmpgo.Debug = true
+    // turn on debugging
+    gsnmpgo.Debug = true
 
 SPECIFYING URIS
 

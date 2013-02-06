@@ -34,9 +34,6 @@ Issues
   repeated getnexts are being done ie like snmp v1. The gsnmp C library doesn't
   implement GETBULK directly, my intention is to write the C code to do it.
 
-* Query() to have extra parameters added, to allow these properties to be set:
-  retries, timeout, nonrep (getbulk), maxrep (getbulk)
-
 * testing is still a WIP (work in progress)
 
 License

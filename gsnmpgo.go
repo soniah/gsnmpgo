@@ -61,11 +61,19 @@ var Debug bool // global debugging flag
 // code.google.com/p/biogo.llrb/
 type QueryResults map[string]Varbinder
 
+// Struct of parameters to pass to Query
+type QueryParams struct {
+	Uri     string
+	Version SnmpVersion
+	Timeout int // timeout in milliseconds
+	Retries int // number of retries
+	Nonrep  int // only for v2c GETBULK TODO
+	Maxrep  int // only for v2C GETBULK TODO
+}
+
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
-func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
-	// TODO also make setable: retries, timeout (version already setable),
-	// nonrep, maxrep for bulkwalk
-	parsed_uri, err := parseURI(uri)
+func Query(params *QueryParams) (results QueryResults, err error) {
+	parsed_uri, err := parseURI(params.Uri)
 	if Debug {
 		fmt.Printf("parsed_uri: %s\n\n", parsed_uri)
 	}
@@ -73,7 +81,7 @@ func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
 		return nil, err
 	}
 
-	vbl, uritype, err := parsePath(uri, parsed_uri)
+	vbl, uritype, err := parsePath(params.Uri, parsed_uri)
 	defer uriDelete(parsed_uri)
 	if Debug {
 		fmt.Printf("vbl, uritype: %s, %s\n\n", gListOidsString(vbl), uritype)
@@ -82,7 +90,7 @@ func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
 		return nil, err
 	}
 
-	session, err := newUri(uri, version, parsed_uri)
+	session, err := newUri(params, parsed_uri)
 	if Debug {
 		fmt.Printf("session: %s\n\n", session)
 	}
@@ -90,7 +98,7 @@ func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
 		return nil, err
 	}
 
-	vbl_results, err := querySync(session, vbl, uritype, version)
+	vbl_results, err := querySync(session, vbl, uritype, params.Version)
 	defer vblDelete(vbl_results)
 	if err != nil {
 		return nil, err
@@ -172,7 +180,7 @@ func vblDelete(vbl *_Ctype_GList) {
 }
 
 // newUri creates a session from a parsed uri.
-func newUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
+func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
 	var gerror *C.GError
 	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
 
@@ -185,7 +193,9 @@ func newUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *
 	if session == nil {
 		return session, fmt.Errorf("%s: unable to create session", libname())
 	}
-	session.version = (_Ctype_GNetSnmpVersion)(version)
+	session.version = (_Ctype_GNetSnmpVersion)(params.Version)
+	session.timeout = (_Ctype_guint)(params.Timeout)
+	session.retries = (_Ctype_guint)(params.Retries)
 
 	// results
 	return session, nil

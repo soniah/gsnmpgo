@@ -28,7 +28,7 @@ func main() {
 	gsnmpgo.Debug = true
 
 	// GET
-	uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
+	// uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
 
 	// WALK:
 	// uri := `snmp://public@192.168.1.10//1.3.6.1.*`
@@ -40,9 +40,15 @@ func main() {
 	// uri := `snmp://public@127.0.0.1:161//1.3.6.1.*`
 
 	// Verax GET - string, oid, timeticks
-	// uri := `snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0,1.3.6.1.2.1.1.3.0)`
+	uri := `snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0,1.3.6.1.2.1.1.3.0)`
 
-	results, err := gsnmpgo.Query(uri, gsnmpgo.GNET_SNMP_V2C)
+	params := &gsnmpgo.QueryParams{
+		Uri:     uri,
+		Version: gsnmpgo.GNET_SNMP_V2C,
+		Timeout: 200,
+		Retries: 2,
+	}
+	results, err := gsnmpgo.Query(params)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
