@@ -44,13 +44,18 @@ Here is a summary of usage:
     }
 
     // use results; result.Value has an interface that supports Stringer and Integer()
-    for _, result := range results {
-        fmt.Printf("%T:%s STRING:%s INTEGER:%d\n",
-            result.Value, result.Oid, result.Value, result.Value.Integer())
+    for oid, value := range results {
+        fmt.Printf("oid, type: %s, %T\n", oid, value)
+        fmt.Printf("INTEGER: %d\n", value.Integer())
+        fmt.Printf("STRING : %s\n", value)
+        fmt.Println()
     }
 
-    // or if you just want to print your results, use Dump()
+    // or if you just want to check your results, use Dump()
     gsnmpgo.Dump(results)
+
+	// turn on debugging
+	gsnmpgo.Debug = true
 
 SPECIFYING URIS
 
@@ -68,23 +73,19 @@ as doing an snmp get you can also do a snmp getnext or snmp walk:
 
 RESULTS
 
-The results are returned as a slice of QueryResult:
+The results are returned as a map of oid to Varbinder:
 
-    type QueryResults []QueryResult
-    type QueryResult struct {
-        Oid   string
-        Value Varbinder
-    }
+    type QueryResults map[string]Varbinder
 
 If you want access to the snmp type for each result returned, you could
 use a type switch:
 
-    for _, result := range results {
-        switch result.Value.(type) {
+    for oid, value := range results {
+        switch value.(type) {
         case gsnmpgo.VBT_OctetString:
-            fmt.Printf("result is a an octet string: %s\n", result)
+            fmt.Printf("OID %s is an octet string: %s\n", oid, value)
         default:
-            fmt.Println("result is some other type")
+            fmt.Printf("OID %s is some other type\n", oid)
         }
     }
 
@@ -98,9 +99,9 @@ an interface that provides two convenience functions:
         fmt.Stringer
     }
 
-    for _, result := range results {
-        fmt.Printf("OID %s as a number: %d\n", result.Oid, result.Value.Integer())
-        fmt.Printf("OID %s as a string: %s\n", result.Oid, result.Value)
+    for oid, value := range results {
+        fmt.Printf("OID %s as a number: %d\n", oid, value.Integer())
+        fmt.Printf("OID %s as a string: %s\n", oid, value)
     }
 
 Some of the Stringers are smart, for example gsnmpgo.VBT_Timeticks will be

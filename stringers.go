@@ -169,6 +169,7 @@ func (s *_Ctype_GNetSnmp) String() string {
 	error_status := strconv.Itoa(int(s.error_status))
 	error_index := strconv.Itoa(int(s.error_index))
 	retries := strconv.Itoa(int(s.retries))
+	timeout := strconv.Itoa(int(s.timeout))
 
 	result := "{"
 	result += "taddress:" + fmt.Sprintf("%s", s.taddress) + " "
@@ -176,6 +177,7 @@ func (s *_Ctype_GNetSnmp) String() string {
 	result += "error_status:" + error_status + " "
 	result += "error_index:" + error_index + " "
 	result += "retries:" + retries + " "
+	result += "timeout:" + timeout + "ms "
 	result += "version:" + fmt.Sprintf("%s", s.version) + " "
 	result += "context_name:" + fmt.Sprintf("%s", s.ctxt_name) + " "
 	result += "security_name:" + fmt.Sprintf("%s", s.sec_name) + " "

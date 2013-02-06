@@ -18,8 +18,12 @@ package gsnmpgo
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import (
+	"fmt"
+	"strconv"
 	"testing"
 )
+
+var _ = fmt.Sprintf("dummy") // dummy
 
 var oidAsStringTests = []struct {
 	in  []int
@@ -36,5 +40,32 @@ func TestOidAsString(t *testing.T) {
 		if test.ok && ret != test.out {
 			t.Errorf("#%d: Bad result: %v (expected %v)", i, ret, test.out)
 		}
+	}
+}
+
+var veraxDevices = []struct {
+	path string
+	port int
+}{
+	{"testing/device/os/os-linux-std.txt", 161},
+	{"testing/device/cisco/cisco_router.txt", 162},
+}
+
+func TestQuery(t *testing.T) {
+	for i, test := range veraxDevices {
+		var err error
+		var vresults, gresults QueryResults
+
+		if vresults, err = ReadVeraxResults(test.path); err != nil {
+			t.Errorf("#%d, %s: ReadVeraxResults error: %s", i, test.path, err)
+		}
+		fmt.Println(vresults) // dummy
+
+		uri := `snmp://public@127.0.0.1:` + strconv.Itoa(test.port) + `//1.3.6.1.*`
+		if gresults, err = Query(uri, GNET_SNMP_V2C); err != nil {
+			t.Errorf("#%d, %s: Query error: %s", i, uri, err)
+		}
+		fmt.Println(gresults) // dummy
+
 	}
 }

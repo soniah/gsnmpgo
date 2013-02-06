@@ -1,0 +1,7 @@
+.*.sw*
+*.tmp
+*.orig
+*.bak
+device
+devices.conf.xml
+*.cap

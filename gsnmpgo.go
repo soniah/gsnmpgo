@@ -54,32 +54,43 @@ import (
 	"unsafe"
 )
 
-type QueryResult struct {
-	Oid   string
-	Value Varbinder
-}
+var Debug bool // global debugging flag
 
-type QueryResults []QueryResult
+// QueryResults is a map from oids to Varbinders. TODO walk should return
+// results in order, use github.com/petar/GoLLRB/llrb or
+// code.google.com/p/biogo.llrb/
+type QueryResults map[string]Varbinder
 
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
 func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
+	// TODO also make setable: retries, timeout (version already setable),
+	// nonrep, maxrep for bulkwalk
 	parsed_uri, err := parseURI(uri)
+	if Debug {
+		fmt.Printf("parsed_uri: %s\n\n", parsed_uri)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	vbl, uritype, err := parsePath(uri, parsed_uri)
 	defer uriDelete(parsed_uri)
+	if Debug {
+		fmt.Printf("vbl, uritype: %s, %s\n\n", gListOidsString(vbl), uritype)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	session, err := newUri(uri, version, parsed_uri)
+	if Debug {
+		fmt.Printf("session: %s\n\n", session)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	vbl_results, err := querySync(session, vbl, uritype)
+	vbl_results, err := querySync(session, vbl, uritype, version)
 	defer vblDelete(vbl_results)
 	if err != nil {
 		return nil, err
@@ -90,8 +101,11 @@ func Query(uri string, version SnmpVersion) (results QueryResults, err error) {
 // Dump is a convenience function for printing the results of a Query.
 func Dump(results QueryResults) {
 	fmt.Println("Dump:")
-	for _, result := range results {
-		fmt.Printf("%T:%s STRING:%s INTEGER:%d\n", result.Value, result.Oid, result.Value, result.Value.Integer())
+	for oid, value := range results {
+		fmt.Printf("oid, type: %s, %T\n", oid, value)
+		fmt.Printf("INTEGER: %d\n", value.Integer())
+		fmt.Printf("STRING : %s\n", value)
+		fmt.Println()
 	}
 }
 
@@ -180,11 +194,14 @@ func newUri(uri string, version SnmpVersion, parsed_uri *_Ctype_GURI) (session *
 // Do an gsnmp library sync_* query
 //
 // Results are returned in C form, use convertResults() to convert to a Go struct.
-func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
-	uritype _Ctype_GNetSnmpUriType) (*_Ctype_GList, error) {
+func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType,
+	version SnmpVersion) (*_Ctype_GList, error) {
 	var gerror *C.GError
 	var out *_Ctype_GList
 
+	if Debug {
+		fmt.Printf("Starting a %s\n\n", uritype)
+	}
 	switch UriType(uritype) {
 	case GNET_SNMP_URI_GET:
 		out = C.gnet_snmp_sync_get(session, vbl, &gerror)
@@ -192,6 +209,13 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
 		out = C.gnet_snmp_sync_getnext(session, vbl, &gerror)
 	case GNET_SNMP_URI_WALK:
 		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
+		/* TODO gnet_snmp_sync_walk is just a series of 'getnexts'
+		if version == GNET_SNMP_V1 {
+			out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
+		} else {
+			// do a proper bulkwalk
+		}
+		*/
 	default:
 		return nil, fmt.Errorf("%s: querySync(): unknown uritype", libname())
 	}
@@ -224,6 +248,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList,
 
 // convertResults converts C results to a Go struct.
 func convertResults(out *_Ctype_GList) (results QueryResults) {
+	results = make(QueryResults)
 	for {
 		if out == nil {
 			// finished
@@ -233,7 +258,6 @@ func convertResults(out *_Ctype_GList) (results QueryResults) {
 		// another result: initialise
 		data := (*C.GNetSnmpVarBind)(out.data)
 		oid := gIntArrayOidString(data.oid, data.oid_len)
-		result := QueryResult{Oid: oid}
 		var value Varbinder
 
 		// convert C values to Go values
@@ -280,8 +304,7 @@ func convertResults(out *_Ctype_GList) (results QueryResults) {
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
 			value = new(VBT_EndOfMibView)
 		}
-		result.Value = value
-		results = append(results, result)
+		results[oid] = value
 
 		// move on to next element in list
 		out = out.next
