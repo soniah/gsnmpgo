@@ -37,6 +37,8 @@ Issues
 * Query() to have extra parameters added, to allow these properties to be set:
   retries, timeout, nonrep (getbulk), maxrep (getbulk)
 
+* testing is still a WIP (work in progress)
+
 License
 -------
 
