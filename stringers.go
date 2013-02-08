@@ -48,13 +48,17 @@ import (
 	"unsafe"
 )
 
+var _ = bytes.Compare([]byte("1"), []byte("1")) // dummy
+var _ = binary.Size("1")                        // dummy
+var _ = unsafe.Sizeof("1")                      // dummy
+
 // gIntArrayOidString converts an oid from C array of guint32's to a Go string
 func gIntArrayOidString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result string) {
-	size := int(unsafe.Sizeof(oid))
+	size := int(unsafe.Sizeof(*oid))
 	length := int(oid_len)
 	gbytes := C.GoBytes(unsafe.Pointer(oid), (_Ctype_int)(size*length))
-
 	buf := bytes.NewBuffer(gbytes)
+
 	for i := 0; i < length; i++ {
 		var out uint32
 		if err := binary.Read(buf, binary.LittleEndian, &out); err == nil {
@@ -63,7 +67,10 @@ func gIntArrayOidString(oid *_Ctype_guint32, oid_len _Ctype_gsize) (result strin
 			return "<error converting oid>"
 		}
 	}
-	return result[1:] // string leading dot
+	if len(result) > 1 {
+		return result[1:] // strip leading dot
+	}
+	return "<error converting oid>"
 }
 
 // gListOidsString returns the string represention of the OIDs in a GList
