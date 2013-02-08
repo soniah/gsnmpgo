@@ -282,7 +282,7 @@ func convertResults(out *_Ctype_GList) (results QueryResults) {
 
 		case GNET_SNMP_VARBIND_TYPE_OBJECTID:
 			guint32_ptr := union_ui32v(data.value)
-			value = VBT_ObjectID(gIntArrayOidString(guint32_ptr, data.value_len))
+			value = VBT_ObjectID("." + gIntArrayOidString(guint32_ptr, data.value_len))
 
 		case GNET_SNMP_VARBIND_TYPE_IPADDRESS:
 			value = VBT_IPAddress(union_ui8v_ipaddress(data.value, data.value_len))
