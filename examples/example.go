@@ -36,17 +36,20 @@ func main() {
 	// NEXT:
 	// uri := `snmp://public@192.168.1.10//1.3.6.1.2.1+`
 
-	// Verax WALK
-	// uri := `snmp://public@127.0.0.1:161//1.3.6.1.*`
-
 	// Verax GET - string, oid, timeticks
 	uri := `snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0,1.3.6.1.2.1.1.3.0)`
+
+	// Verax NEXT:
+	// uri := `snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0)+`
+
+	// Verax WALK
+	// uri := `snmp://public@127.0.0.1:161//1.3.6.1.*`
 
 	params := &gsnmpgo.QueryParams{
 		Uri:     uri,
 		Version: gsnmpgo.GNET_SNMP_V2C,
-		Timeout: 200,
-		Retries: 2,
+		Timeout: 1000,
+		Retries: 5,
 	}
 	results, err := gsnmpgo.Query(params)
 	if err != nil {
@@ -57,18 +60,31 @@ func main() {
 	gsnmpgo.Dump(results)
 	fmt.Println()
 
-	for oid, value := range results {
-		switch value.(type) {
+	ch := results.IterAscend()
+	for {
+		r := <-ch
+		if r == nil {
+			break
+		}
+		result := r.(gsnmpgo.QueryResult)
+		switch result.Value.(type) {
 		case gsnmpgo.VBT_OctetString:
-			fmt.Printf("OID %s is an octet string: %s\n", oid, value)
+			fmt.Printf("OID %s is an octet string: %s\n", result.Oid, result.Value)
 		default:
-			fmt.Printf("OID %s is some other type\n", oid)
+			fmt.Printf("OID %s is some other type\n", result.Oid)
 		}
 	}
 	fmt.Println()
 
-	for oid, value := range results {
-		fmt.Printf("OID %s as a number: %d\n", oid, value.Integer())
-		fmt.Printf("OID %s as a string: %s\n", oid, value)
+	ch2 := results.IterAscend()
+	for {
+		r := <-ch2
+		if r == nil {
+			break
+		}
+		result := r.(gsnmpgo.QueryResult)
+		fmt.Printf("OID %s type: %T\n", result.Oid, result.Value)
+		fmt.Printf("OID %s as a number: %d\n", result.Oid, result.Value.Integer())
+		fmt.Printf("OID %s as a string: %s\n\n", result.Oid, result.Value)
 	}
 }

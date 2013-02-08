@@ -19,30 +19,34 @@ package gsnmpgo
 
 import (
 	"fmt"
+	"github.com/petar/GoLLRB/llrb"
 	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
+	"testing"
 )
 
 var _ = fmt.Sprintf("dummy")        // dummy
 var _ = strings.Split("dummy", "m") // dummy
+var _ = strconv.Itoa(0)             // dummy
 
-func ReadVeraxResults(filename string) (results QueryResults, err error) {
+func ReadVeraxResults(filename string) (results *llrb.Tree, err error) {
 	var lines []byte
 	if lines, err = ioutil.ReadFile(filename); err != nil {
 		return nil, fmt.Errorf("unable to open file %s", filename)
 	}
-	results = make(QueryResults)
+	results = llrb.New(lessOID)
 
 	// some lines have newlines in them, therefore can't just split on newline
-	lines_split := re_split(regexp.MustCompile(`\r\n\.`), string(lines), -1)
+	lines_split := re_split(regexp.MustCompile(`\n\.`), string(lines), -1)
+LINE:
 	for _, line := range lines_split {
 		splits_a := strings.SplitN(line, " = ", 2)
 		oid := splits_a[0]
 		splits_b := strings.SplitN(splits_a[1], ": ", 2)
 		oidtype := splits_b[0]
-		oidval := splits_b[1]
+		oidval := strings.TrimSpace(splits_b[1])
 
 		// removing leading . first oid
 		if string(oid[0]) == "." {
@@ -53,51 +57,93 @@ func ReadVeraxResults(filename string) (results QueryResults, err error) {
 		switch oidtype {
 
 		case "STRING", "String", "Hex-STRING":
+			oidval = strings.Trim(oidval, `"`)
 			value = VBT_OctetString(oidval)
 
 		case "OID":
 			value = VBT_ObjectID(oidval)
 
-		case "IpAddress":
+		case "IpAddress", "Network Address":
 			value = VBT_IPAddress(oidval)
 
 		case "INTEGER":
-			if n, err := strconv.Atoi(oidval); err != nil {
+			if n, err := strconv.Atoi(oidval); err == nil {
 				value = VBT_Integer32(n)
+			} else {
+				panic(fmt.Sprintf("Err converting integer. oid: %s err: %v\n", oid, err))
 			}
 
 		case "Gauge32":
-			if n, err := strconv.Atoi(oidval); err != nil {
+			if n, err := strconv.Atoi(oidval); err == nil {
 				value = VBT_Unsigned32(n)
 			}
 
 		case "Counter32":
-			if n, err := strconv.Atoi(oidval); err != nil {
+			if n, err := strconv.ParseUint(oidval, 10, 32); err == nil {
 				value = VBT_Counter32(n)
+			} else {
+				panic(fmt.Sprintf("Counter32: oid: %s oidval: %s err: %v\n", oid, oidval, err))
 			}
 
 		case "Timeticks":
-			if n, err := strconv.Atoi(oidval); err != nil {
+			matches := regexp.MustCompile(`\d+`).FindAllString(oidval, 1) // pull out "(value)"
+			oidval := matches[0]
+			if n, err := strconv.Atoi(oidval); err == nil {
 				value = VBT_Timeticks(n)
 			}
 
 		case "Counter64":
-			if n, err := strconv.Atoi(oidval); err != nil {
+			if n, err := strconv.ParseUint(oidval, 10, 64); err == nil {
 				value = VBT_Counter64(n)
 			}
 
-		case "Network Address":
-			// ?? Network Address, C0:A8:68:01
-
 		case "BITS":
-			// ?? BITS, 80 0
+			continue LINE
+			// TODO is BITS Verax specific, or doesn't gsnmp handle?
+			// .1.3.6.1.2.1.88.1.4.2.1.3.6.95.115.110.109.112.100.95.109.116.101.
+			// 84.114.105.103.103.101.114.70.105.114.101.100
+			// = BITS: 38 30 20 30 2 3 4 10 11 18 26 27
 
 		default:
-			fmt.Printf("Unhandled type: %s, %s\n", oidtype, oidval)
+			panic(fmt.Sprintf("Unhandled type: %s, %s\n", oidtype, oidval))
 		}
-		results[oid] = value
+		result := QueryResult{Oid: oid, Value: value}
+		results.ReplaceOrInsert(result)
 	}
 	return results, nil
+}
+
+func CompareVerax(t *testing.T, gresults, vresults *llrb.Tree) {
+	ch := gresults.IterAscend()
+	for {
+		gr := <-ch
+		if gr == nil {
+			break
+		}
+		goresult := gr.(QueryResult)
+		vstruct := QueryResult{Oid: goresult.Oid}
+		vr := vresults.Get(vstruct)
+		if vr == nil {
+			continue
+		}
+		vresult := vr.(QueryResult)
+
+		vstring := fmt.Sprintf("%s", vresult.Value)
+		gostring := fmt.Sprintf("%s", goresult.Value)
+		if gostring != vstring {
+			// fmt.Printf("OK oid: %s type: %T value: %s\n", goresult.Oid, goresult.Value, gostring)
+			if len(gostring) > 4 && gostring[0:5] == "07 DA" {
+				// skip - weird Verax stuff
+			} else if len(vstring) > 4 && vstring[0:5] == "4E:85" {
+				// skip - weird Verax stuff
+			} else if len(vstring) > 17 && vstring[0:18] == "Cisco IOS Software" {
+				// skip - \n's have been stripped - ignore
+			} else {
+				t.Errorf("compare fail: oid: %s type: %T\ngostring: |%s|\nvstring : |%s|",
+					goresult.Oid, goresult.Value, gostring, vstring)
+			}
+		}
+	}
 }
 
 // adapted from http://codereview.appspot.com/6846048/

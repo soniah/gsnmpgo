@@ -19,10 +19,13 @@ Here is an example of installation on Ubuntu Precise 12.04.1:
     ^D
     mkdir ~/go && source ~/.bashrc && cd ~/go
 
-    # download only - troubleshooting builds is easier
-    go get -d github.com/soniah/gsnmpgo
+    # install GoLLRB; ignore error about "no Go source files" - GoLLRB has a
+    # non-standard layout
+    go get -d github.com/petar/GoLLRB
+    go install github.com/petar/GoLLRB/llrb
 
-    # install prerequisites for gsnmpgo and build
+    # install gsnmpgo
+    go get -d github.com/soniah/gsnmpgo
     sudo aptitude install libglib2.0-dev libgsnmp0-dev libgnet-dev
     go install github.com/soniah/gsnmpgo
 
@@ -33,7 +36,7 @@ Here is an example of installation on Ubuntu Precise 12.04.1:
 
 SUMMARY
 
-Here is a summary of usage:
+(most of this code is in examples/example.go)
 
     // do an snmp get; RFC 4088 is used for uris
     uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0)`
@@ -49,15 +52,7 @@ Here is a summary of usage:
         os.Exit(1)
     }
 
-    // use results; result.Value has an interface that supports Stringer and Integer()
-    for oid, value := range results {
-        fmt.Printf("oid, type: %s, %T\n", oid, value)
-        fmt.Printf("INTEGER: %d\n", value.Integer())
-        fmt.Printf("STRING : %s\n", value)
-        fmt.Println()
-    }
-
-    // or if you just want to check your results, use Dump()
+    // check your results
     gsnmpgo.Dump(results)
 
     // turn on debugging
@@ -79,35 +74,55 @@ as doing an snmp get you can also do a snmp getnext or snmp walk:
 
 RESULTS
 
-The results are returned as a map of oid to Varbinder:
+The results are returned as an LLRB tree to provide "ordered map"
+functionality (ie finding items by "key", and iterating "in order"). Items in
+the tree are of type QueryResult:
 
-    type QueryResults map[string]Varbinder
+    type QueryResult struct {
+        Oid   string
+        Value Varbinder
+    }
 
-If you want access to the snmp type for each result returned, you could
-use a type switch:
+See http://github.com/petar/GoLLRB for more documentation on using the LLRB
+tree.
 
-    for oid, value := range results {
-        switch value.(type) {
+SNMP types are represented by Go types that implement the Varbinder interface
+(eg "Octet String" is VBT_OctetString, "IP Address" is VBT_IPAddress). Use a
+type switch to make decisions based on the SNMP type:
+
+    ch := results.IterAscend()
+    for {
+        r := <-ch
+        if r == nil {
+            break
+        }
+        result := r.(gsnmpgo.QueryResult)
+        switch result.Value.(type) {
         case gsnmpgo.VBT_OctetString:
-            fmt.Printf("OID %s is an octet string: %s\n", oid, value)
+            fmt.Printf("OID %s is an octet string: %s\n", result.Oid, result.Value)
         default:
-            fmt.Printf("OID %s is some other type\n", oid)
+            fmt.Printf("OID %s is some other type\n", result.Oid)
         }
     }
 
-Often you just want the result as a string or a number, Varbinder is
-an interface that provides two convenience functions:
+The Varbinder interface has two convenience functions Integer() and String()
+that allow you to get all your results "as a string" or "as a number":
 
     type Varbinder interface {
-        // Integer() needs to handle both signed numbers (int32), as well as
-        // unsigned int 64 (uint64). Therefore it returns a *big.Int.
         Integer() *big.Int
         fmt.Stringer
     }
 
-    for oid, value := range results {
-        fmt.Printf("OID %s as a number: %d\n", oid, value.Integer())
-        fmt.Printf("OID %s as a string: %s\n", oid, value)
+    ch2 := results.IterAscend()
+    for {
+        r := <-ch2
+        if r == nil {
+            break
+        }
+        result := r.(gsnmpgo.QueryResult)
+        fmt.Printf("OID %s type: %T\n", result.Oid, result.Value)
+        fmt.Printf("OID %s as a number: %d\n", result.Oid, result.Value.Integer())
+        fmt.Printf("OID %s as a string: %s\n\n", result.Oid, result.Value)
     }
 
 Some of the Stringers are smart, for example gsnmpgo.VBT_Timeticks will be
@@ -115,6 +130,26 @@ formatted as days, hours, etc when returned as a string:
 
     OID 1.3.6.1.2.1.1.3.0 as a number: 4381200
     OID 1.3.6.1.2.1.1.3.0 as a string: 0 days, 12:10:12.00
+
+TESTS
+
+The tests use the Verax Snmp Simulator [1]; setup Verax before running "go test":
+
+* download, install and run Verax with the default configuration
+
+* in the gsnmpgo/testing directory, setup these symlinks (or equivalents for your system):
+
+    ln -s /usr/local/vxsnmpsimulator/device device
+    ln -s /usr/local/vxsnmpsimulator/conf/devices.conf.xml devices.conf.xml
+
+* remove randomising elements from Verax device files:
+
+	cd testing/device/cisco
+	sed -i -e 's!\/\/\$.*!!' -e 's!^M!!' cisco_router.txt
+	cd ../os
+	sed -i -e 's!\/\/\$.*!!' -e 's!^M!!' os-linux-std.txt
+
+[1] http://www.veraxsystems.com/en/products/snmpsimulator
 
 Sonia Hamilton, sonia@snowfrog.net, http://www.snowfrog.net.
 */

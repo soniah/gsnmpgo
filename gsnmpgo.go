@@ -51,15 +51,19 @@ import "C"
 
 import (
 	"fmt"
+	"github.com/petar/GoLLRB/llrb"
+	"strconv"
+	"strings"
 	"unsafe"
 )
 
 var Debug bool // global debugging flag
 
-// QueryResults is a map from oids to Varbinders. TODO walk should return
-// results in order, use github.com/petar/GoLLRB/llrb or
-// code.google.com/p/biogo.llrb/
-type QueryResults map[string]Varbinder
+// A single result, used as an Item in the llrb tree
+type QueryResult struct {
+	Oid   string
+	Value Varbinder
+}
 
 // Struct of parameters to pass to Query
 type QueryParams struct {
@@ -67,12 +71,16 @@ type QueryParams struct {
 	Version SnmpVersion
 	Timeout int // timeout in milliseconds
 	Retries int // number of retries
-	Nonrep  int // only for v2c GETBULK TODO
-	Maxrep  int // only for v2C GETBULK TODO
+	// Nonrep and Maxrep will be used by v2c BULK GETs TODO
+	Nonrep int
+	Maxrep int
+	// if Tree is non-nil, it will be used for appending Query()
+	// results eg when doing two GETs in a row
+	Tree *llrb.Tree
 }
 
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
-func Query(params *QueryParams) (results QueryResults, err error) {
+func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	parsed_uri, err := parseURI(params.Uri)
 	if Debug {
 		fmt.Printf("parsed_uri: %s\n\n", parsed_uri)
@@ -103,16 +111,22 @@ func Query(params *QueryParams) (results QueryResults, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return convertResults(vbl_results), nil
+	return convertResults(params, vbl_results), nil
 }
 
 // Dump is a convenience function for printing the results of a Query.
-func Dump(results QueryResults) {
+func Dump(results *llrb.Tree) {
 	fmt.Println("Dump:")
-	for oid, value := range results {
-		fmt.Printf("oid, type: %s, %T\n", oid, value)
-		fmt.Printf("INTEGER: %d\n", value.Integer())
-		fmt.Printf("STRING : %s\n", value)
+	ch := results.IterAscend()
+	for {
+		r := <-ch
+		if r == nil {
+			break
+		}
+		result := r.(QueryResult)
+		fmt.Printf("oid, type: %s, %T\n", result.Oid, result.Value)
+		fmt.Printf("INTEGER: %d\n", result.Value.Integer())
+		fmt.Printf("STRING : %s\n", result.Value)
 		fmt.Println()
 	}
 }
@@ -257,8 +271,15 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 }
 
 // convertResults converts C results to a Go struct.
-func convertResults(out *_Ctype_GList) (results QueryResults) {
-	results = make(QueryResults)
+func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
+
+	// create or re-use an existing llrb Tree
+	if params.Tree == nil {
+		results = llrb.New(lessOID)
+	} else {
+		results = params.Tree
+	}
+
 	for {
 		if out == nil {
 			// finished
@@ -314,7 +335,8 @@ func convertResults(out *_Ctype_GList) (results QueryResults) {
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
 			value = new(VBT_EndOfMibView)
 		}
-		results[oid] = value
+		result := QueryResult{Oid: oid, Value: value}
+		results.ReplaceOrInsert(result)
 
 		// move on to next element in list
 		out = out.next
@@ -325,4 +347,38 @@ func convertResults(out *_Ctype_GList) (results QueryResults) {
 // libname returns the name of this library, for generating error messages.
 func libname() string {
 	return "gsnmpgo"
+}
+
+// lessOID is the LessFunc for GoLLRB
+//
+// It returns true if oid a is less than oid b.
+func lessOID(astruct, bstruct interface{}) bool {
+	a := astruct.(QueryResult).Oid
+	b := bstruct.(QueryResult).Oid
+
+	if a == "" && b == "" {
+		return false
+	} else if a == "" {
+		return true
+	} else if b == "" {
+		return false
+	}
+
+	a_splits := strings.Split(a, ".")
+	b_splits := strings.Split(b, ".")
+	len_b := len(b_splits)
+
+	for i, a_digit := range a_splits {
+		if i > len_b-1 {
+			return false
+		}
+		a_num, _ := strconv.Atoi(a_digit)
+		b_num, _ := strconv.Atoi(b_splits[i])
+		if a_num < b_num {
+			return true
+		} else if i == len_b-1 {
+			return false
+		}
+	}
+	return true
 }

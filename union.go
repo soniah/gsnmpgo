@@ -117,8 +117,7 @@ func union_ui8v_string(cbytes [8]byte, value_len _Ctype_gsize) (result string) {
 		}
 	}
 
-	char_ptr := (*_Ctype_char)(up)
-	return C.GoString(char_ptr)
+	return string(gobytes)
 }
 
 // the ui8v field contains unprintable characters - convert to "hex string"

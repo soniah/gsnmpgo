@@ -26,15 +26,9 @@ See documentation.
 Issues
 ------
 
-* snmp walk results are returned as a map ie unordered. My intention is to
-  replace the map with an "ordered map" equivalent eg
-  github.com/petar/GoLLRB/llrb or code.google.com/p/biogo.llrb/
-
 * snmp walks aren't being done as "GETBULK" when using snmp v2c, rather
   repeated getnexts are being done ie like snmp v1. The gsnmp C library doesn't
   implement GETBULK directly, my intention is to write the C code to do it.
-
-* testing is still a WIP (work in progress)
 
 License
 -------

@@ -19,11 +19,13 @@ package gsnmpgo
 
 import (
 	"fmt"
+	"github.com/petar/GoLLRB/llrb"
 	"strconv"
 	"testing"
 )
 
 var _ = fmt.Sprintf("dummy") // dummy
+var _ = strconv.Itoa(0)      // dummy
 
 var oidAsStringTests = []struct {
 	in  []int
@@ -43,6 +45,34 @@ func TestOidAsString(t *testing.T) {
 	}
 }
 
+var lessOIDTests = []struct {
+	oid_a string
+	oid_b string
+	less  bool
+}{
+	{"1.2.3", "1.2.4", true},
+	{"1.2.3", "1.2.3.4", true},
+	{"1.2.3", "1.2", false},
+	{"", "1.2", true},
+	{"1.2", "", false},
+	{"", "", false},
+	{"1.9", "1.10", true},
+	{"1.12", "1.10", false},
+	{"1.12.2", "1.12.1", false},
+	{"1.12.1", "1.12.2", true},
+}
+
+func TestLessOID(t *testing.T) {
+	for i, test := range lessOIDTests {
+		astruct := QueryResult{Oid: test.oid_a}
+		bstruct := QueryResult{Oid: test.oid_b}
+		if res := lessOID(astruct, bstruct); res != test.less {
+			t.Errorf("#%d: expected (%t) got (%t) oid_a (%s) oid_b (%s)",
+				i, test.less, res, test.oid_a, test.oid_b)
+		}
+	}
+}
+
 var veraxDevices = []struct {
 	path string
 	port int
@@ -51,21 +81,45 @@ var veraxDevices = []struct {
 	{"testing/device/cisco/cisco_router.txt", 162},
 }
 
-func TestQuery(t *testing.T) {
+func TestQueryGets(t *testing.T) {
 	for i, test := range veraxDevices {
 		var err error
-		var vresults, gresults QueryResults
 
+		var vresults *llrb.Tree
 		if vresults, err = ReadVeraxResults(test.path); err != nil {
 			t.Errorf("#%d, %s: ReadVeraxResults error: %s", i, test.path, err)
 		}
-		fmt.Println(vresults) // dummy
 
-		uri := `snmp://public@127.0.0.1:` + strconv.Itoa(test.port) + `//1.3.6.1.*`
-		if gresults, err = Query(uri, GNET_SNMP_V2C); err != nil {
-			t.Errorf("#%d, %s: Query error: %s", i, uri, err)
+		var counter int
+		var uri, oids string
+		gresults := llrb.New(lessOID)
+		ch := vresults.IterAscend()
+		for {
+			r := <-ch
+			if r == nil {
+				break
+			}
+			counter += 1
+			if counter <= 3 { // TODO random number of oids, not hardcoded n
+				oid := r.(QueryResult)
+				oids += "," + oid.Oid
+			} else {
+				uri = `snmp://public@127.0.0.1:` + strconv.Itoa(test.port) + "//(" + oids[1:] + ")"
+				counter = 0 // reset
+				oids = ""   // reset
+
+				params := &QueryParams{
+					Uri:     uri,
+					Version: GNET_SNMP_V2C,
+					Timeout: 200,
+					Retries: 5,
+					Tree:    gresults,
+				}
+				if _, err := Query(params); err != nil {
+					t.Errorf("Query error: %s. Uri: %s", err, uri)
+				}
+			}
 		}
-		fmt.Println(gresults) // dummy
-
+		CompareVerax(t, gresults, vresults)
 	}
 }
