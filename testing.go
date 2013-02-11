@@ -128,8 +128,8 @@ func CompareVerax(t *testing.T, gresults, vresults *llrb.Tree) {
 		}
 		vresult := vr.(QueryResult)
 
-		vstring := fmt.Sprintf("%s", vresult.Value)
-		gostring := fmt.Sprintf("%s", goresult.Value)
+		vstring := vresult.Value.String()
+		gostring := goresult.Value.String()
 		if gostring != vstring {
 			// fmt.Printf("OK oid: %s type: %T value: %s\n", goresult.Oid, goresult.Value, gostring)
 			if len(gostring) > 4 && gostring[0:5] == "07 DA" {
