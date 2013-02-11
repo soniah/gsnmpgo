@@ -296,7 +296,7 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 
 	// create or re-use an existing llrb Tree
 	if params.Tree == nil {
-		results = llrb.New(lessOID)
+		results = llrb.New(LessOID)
 	} else {
 		results = params.Tree
 	}
@@ -370,10 +370,10 @@ func libname() string {
 	return "gsnmpgo"
 }
 
-// lessOID is the LessFunc for GoLLRB
+// LessOID is the LessFunc for GoLLRB
 //
 // It returns true if oid a is less than oid b.
-func lessOID(astruct, bstruct interface{}) bool {
+func LessOID(astruct, bstruct interface{}) bool {
 	a := astruct.(QueryResult).Oid
 	b := bstruct.(QueryResult).Oid
 

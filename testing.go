@@ -36,7 +36,7 @@ func ReadVeraxResults(filename string) (results *llrb.Tree, err error) {
 	if lines, err = ioutil.ReadFile(filename); err != nil {
 		return nil, fmt.Errorf("unable to open file %s", filename)
 	}
-	results = llrb.New(lessOID)
+	results = llrb.New(LessOID)
 
 	// some lines have newlines in them, therefore can't just split on newline
 	lines_split := re_split(regexp.MustCompile(`\n\.`), string(lines), -1)

@@ -66,7 +66,7 @@ func TestLessOID(t *testing.T) {
 	for i, test := range lessOIDTests {
 		astruct := QueryResult{Oid: test.oid_a}
 		bstruct := QueryResult{Oid: test.oid_b}
-		if res := lessOID(astruct, bstruct); res != test.less {
+		if res := LessOID(astruct, bstruct); res != test.less {
 			t.Errorf("#%d: expected (%t) got (%t) oid_a (%s) oid_b (%s)",
 				i, test.less, res, test.oid_a, test.oid_b)
 		}
@@ -92,7 +92,7 @@ func TestQueryGets(t *testing.T) {
 
 		var counter int
 		var uri, oids string
-		gresults := llrb.New(lessOID)
+		gresults := llrb.New(LessOID)
 		ch := vresults.IterAscend()
 		for {
 			r := <-ch
