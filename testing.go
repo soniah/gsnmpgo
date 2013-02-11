@@ -130,6 +130,7 @@ func CompareVerax(t *testing.T, gresults, vresults *llrb.Tree) {
 
 		vstring := vresult.Value.String()
 		gostring := goresult.Value.String()
+		fmt.Printf("verax  : %s\ngsnmpgo: %s\n\n", vstring, gostring)
 		if gostring != vstring {
 			// fmt.Printf("OK oid: %s type: %T value: %s\n", goresult.Oid, goresult.Value, gostring)
 			if len(gostring) > 4 && gostring[0:5] == "07 DA" {
