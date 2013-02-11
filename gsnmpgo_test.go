@@ -123,3 +123,30 @@ func TestQueryGets(t *testing.T) {
 		CompareVerax(t, gresults, vresults)
 	}
 }
+
+var partitionAllPTests = []struct {
+	cp int
+	ps int
+	sl int
+	ok bool
+}{
+	{-1, 3, 8, false}, // test out of range
+	{8, 3, 8, false},  // test out of range
+	{0, 3, 8, false},  // test 0-7/3 per doco
+	{1, 3, 8, false},
+	{2, 3, 8, true},
+	{3, 3, 8, false},
+	{4, 3, 8, false},
+	{5, 3, 8, true},
+	{6, 3, 8, false},
+	{7, 3, 8, true},
+}
+
+func TestPartitionAllP(t *testing.T) {
+	for i, test := range partitionAllPTests {
+		ok := PartitionAllP(test.cp, test.ps, test.sl)
+		if ok != test.ok {
+			t.Errorf("#%d: Bad result: %v (expected %v)", i, ok, test.ok)
+		}
+	}
+}

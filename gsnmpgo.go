@@ -403,3 +403,29 @@ func lessOID(astruct, bstruct interface{}) bool {
 	}
 	return true
 }
+
+// PartitionAllP - returns true when dividing a slice into
+// partition_size lengths, including last partition which may be smaller
+// than partition_size.
+//
+// For example for a slice of 8 items to be broken into partitions of
+// length 3, PartitionAllP returns true for the current_position having
+// the following values:
+//
+// 0  1  2  3  4  5  6  7
+//       T        T     T
+//
+// 'P' stands for Predicate (like foo? in Ruby, foop in Lisp)
+//
+func PartitionAllP(current_position, partition_size, slice_length int) bool {
+	if current_position <= 0 || current_position >= slice_length {
+		return false
+	}
+	if current_position%partition_size == partition_size-1 {
+		return true
+	}
+	if current_position == slice_length-1 {
+		return true
+	}
+	return false
+}

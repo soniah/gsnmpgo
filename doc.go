@@ -146,6 +146,22 @@ The tests use the Verax Snmp Simulator [1]; setup Verax before running "go test"
 
 [1] http://www.veraxsystems.com/en/products/snmpsimulator
 
+HELPER FUNCTIONS
+
+There are a number of helper functions. Many of these have tests that serve as
+example usage.
+
+PartitionAllP()
+
+If you have a many oids to retrieve for a single device, you could:
+
+* send all the oids in one SNMP Get - could cause network problems
+* do an SNMP BulkWalk - but that isn't implemented yet, and maybe
+  your target device only supports SNMP v1 anyway
+
+Instead, use PartitionAllP() to break up your large list of OIDs into
+partitions of n.
+
 Sonia Hamilton, sonia@snowfrog.net, http://www.snowfrog.net.
 */
 package gsnmpgo
