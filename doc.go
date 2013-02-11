@@ -40,12 +40,7 @@ SUMMARY
 
     // do an snmp get; RFC 4088 is used for uris
     uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0)`
-    params := &gsnmpgo.QueryParams{
-        Uri:     uri,
-        Version: gsnmpgo.GNET_SNMP_V2C,
-        Timeout: 200,
-        Retries: 2,
-    }
+    params := gsnmpgo.NewDefaultParams(uri)
     results, err := gsnmpgo.Query(params)
     if err != nil {
         fmt.Println(err)
@@ -144,10 +139,10 @@ The tests use the Verax Snmp Simulator [1]; setup Verax before running "go test"
 
 * remove randomising elements from Verax device files:
 
-	cd testing/device/cisco
-	sed -i -e 's!\/\/\$.*!!' -e 's!^M!!' cisco_router.txt
-	cd ../os
-	sed -i -e 's!\/\/\$.*!!' -e 's!^M!!' os-linux-std.txt
+    cd testing/device/cisco
+    sed -i -e 's!\/\/\$.*!!' -e 's!^M!!' cisco_router.txt
+    cd ../os
+    sed -i -e 's!\/\/\$.*!!' -e 's!^M!!' os-linux-std.txt
 
 [1] http://www.veraxsystems.com/en/products/snmpsimulator
 

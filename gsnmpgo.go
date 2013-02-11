@@ -71,12 +71,33 @@ type QueryParams struct {
 	Version SnmpVersion
 	Timeout int // timeout in milliseconds
 	Retries int // number of retries
-	// Nonrep and Maxrep will be used by v2c BULK GETs TODO
+	// Nonrep and Maxrep will be used by v2c BULK GETs.
+	// From O'Reilly "Essential SNMP": "nonrep is the number of scalar
+	// objects that this command will return; rep is the number of
+	// instances of each nonscalar object that the command will return."
 	Nonrep int
 	Maxrep int
 	// if Tree is non-nil, it will be used for appending Query()
 	// results eg when doing two GETs in a row
 	Tree *llrb.Tree
+}
+
+func NewDefaultParams(uri string) *QueryParams {
+	return &QueryParams{
+		Uri:     uri,
+		Version: GNET_SNMP_V2C,
+		Timeout: 200,
+		Retries: 3,
+		// From O'Reilly "Essential SNMP": "nonrep is the number of scalar
+		// objects that this command will return; rep is the number of
+		// instances of each nonscalar object that the command will return. If
+		// you omit this option the default values of nonrep and rep, 1 and
+		// 100, respectively, will be used." So use these defaults for the
+		// moment.
+		Nonrep: 1,
+		Maxrep: 100,
+		Tree:   nil,
+	}
 }
 
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.

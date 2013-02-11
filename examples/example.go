@@ -45,12 +45,7 @@ func main() {
 	// Verax WALK
 	// uri := `snmp://public@127.0.0.1:161//1.3.6.1.*`
 
-	params := &gsnmpgo.QueryParams{
-		Uri:     uri,
-		Version: gsnmpgo.GNET_SNMP_V2C,
-		Timeout: 1000,
-		Retries: 5,
-	}
+	params := gsnmpgo.NewDefaultParams(uri)
 	results, err := gsnmpgo.Query(params)
 	if err != nil {
 		fmt.Println(err)
