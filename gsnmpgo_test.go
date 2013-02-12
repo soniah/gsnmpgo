@@ -125,10 +125,10 @@ func TestQueryGets(t *testing.T) {
 }
 
 var partitionAllPTests = []struct {
-	cp int
-	ps int
-	sl int
-	ok bool
+	current_position int
+	partition_size   int
+	slice_length     int
+	ok               bool
 }{
 	{-1, 3, 8, false}, // test out of range
 	{8, 3, 8, false},  // test out of range
@@ -144,7 +144,7 @@ var partitionAllPTests = []struct {
 
 func TestPartitionAllP(t *testing.T) {
 	for i, test := range partitionAllPTests {
-		ok := PartitionAllP(test.cp, test.ps, test.sl)
+		ok := PartitionAllP(test.current_position, test.partition_size, test.slice_length)
 		if ok != test.ok {
 			t.Errorf("#%d: Bad result: %v (expected %v)", i, ok, test.ok)
 		}
