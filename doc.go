@@ -51,6 +51,12 @@ Here is an example of installation on Ubuntu Precise 12.04.1:
     cd src/github.com/soniah/gsnmpgo/examples
     go run example.go
 
+Builds ok with these C libs (Ubuntu versions shown):
+
+    libglib2.0-dev                                 2.32.3-0ubuntu1
+    libgsnmp0-dev                                  0.3.0-1.1
+    libgnet-dev                                    2.0.8-2.1
+
 SUMMARY
 
 (most of this code is in examples/example.go)
