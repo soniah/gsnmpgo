@@ -1,8 +1,25 @@
 /*
-Package gsnmpgo is a go/cgo wrapper around gsnmp; it currently provides support
-for snmp v1 and v2c, and snmp get, snmp getnext, and snmp walk.
+Package gsnmpgo is an snmp library for Go; it uses Go/CGo to wrap gsnmp.
 
 gsnmpgo is pre 1.0, therefore API's may change, and tests are minimal.
+
+ISSUES
+
+Snmp walks aren't being done as "GETBULK" when using snmp v2c, rather repeated
+getnexts are being done ie like snmp v1. The gsnmp C library doesn't implement
+GETBULK directly, my intention is to write the C code to do it.
+
+Threading: either gsnmp isn't totally thread safe, or I'm making errors with my
+C calls from Go (more likely). I'm getting aborts with this message:
+
+    GLib-WARNING **: g_main_context_prepare(): main loop already active in another thread
+
+My current workaround is to force Query() calls to be synchronous:
+
+    var mu sync.Mutex
+    mu.Lock()
+    _, _ = gsnmpgo.Query(params)
+    mu.Unlock()
 
 INSTALLATION
 
