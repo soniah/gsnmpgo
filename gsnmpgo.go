@@ -265,29 +265,13 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 		return nil, fmt.Errorf("%s: querySync(): unknown uritype", libname())
 	}
 
-	// error handling
-	if gerror != nil {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		C.g_clear_error(&gerror)
-		return out, fmt.Errorf("%s: querySync(): %s", libname(), err_string)
-	}
-	err_status := PduError(session.error_status)
-	switch UriType(uritype) {
-	case GNET_SNMP_URI_WALK:
-		if err_status != GNET_SNMP_PDU_ERR_NOERROR && err_status != GNET_SNMP_PDU_ERR_NOSUCHNAME {
-			es := C.get_err_label(session.error_status)
-			err_string := C.GoString((*_Ctype_char)(es))
-			return out, fmt.Errorf("%s: querySync(): %s for uri %d", libname(), err_string, session.error_index)
-		}
-	default:
-		if err_status != GNET_SNMP_PDU_ERR_NOERROR {
-			es := C.get_err_label(session.error_status)
-			err_string := C.GoString((*_Ctype_char)(es))
-			return out, fmt.Errorf("%s: querySync(): %s for uri %d", libname(), err_string, session.error_index)
-		}
-	}
+	/*
+		Originally error handling was done at this point, like
+		gsnmp-0.3.0/examples/gsnmp-get.c. However in production too many results
+		were being discarded. Hence just return out, and convertResults() will
+		convert any errors in out to nil values.
+	*/
 
-	// results
 	return out, nil
 }
 
@@ -355,6 +339,7 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
 			value = new(VBT_EndOfMibView)
+
 		}
 		result := QueryResult{Oid: oid, Value: value}
 		results.ReplaceOrInsert(result)
