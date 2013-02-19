@@ -174,7 +174,7 @@ func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	var gerror *C.GError
 	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
 	if parsed_uri == nil {
-		return nil, fmt.Errorf("%s: invalid snmp uri: %s", libname(), uri)
+		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
 	}
 	return parsed_uri, nil
 }
@@ -194,7 +194,7 @@ func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype 
 	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
 	if rv == 0 {
 		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		return vbl, uritype, fmt.Errorf("%s: %s: <%s>", libname(), err_string, uri)
+		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
 	}
 	return vbl, uritype, nil
 }
@@ -223,10 +223,10 @@ func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetS
 	if gerror != nil {
 		err_string := C.GoString((*_Ctype_char)(gerror.message))
 		C.g_clear_error(&gerror)
-		return session, fmt.Errorf("%s: %s", libname(), err_string)
+		return session, fmt.Errorf("%s: newUri(): %s", libname(), err_string)
 	}
 	if session == nil {
-		return session, fmt.Errorf("%s: unable to create session", libname())
+		return session, fmt.Errorf("%s: newUri(): unable to create session", libname())
 	}
 	session.version = (_Ctype_GNetSnmpVersion)(params.Version)
 	session.timeout = (_Ctype_guint)(params.Timeout)
@@ -269,7 +269,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 	if gerror != nil {
 		err_string := C.GoString((*_Ctype_char)(gerror.message))
 		C.g_clear_error(&gerror)
-		return out, fmt.Errorf("%s: %s", libname(), err_string)
+		return out, fmt.Errorf("%s: querySync(): %s", libname(), err_string)
 	}
 	err_status := PduError(session.error_status)
 	switch UriType(uritype) {
@@ -277,13 +277,13 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 		if err_status != GNET_SNMP_PDU_ERR_NOERROR && err_status != GNET_SNMP_PDU_ERR_NOSUCHNAME {
 			es := C.get_err_label(session.error_status)
 			err_string := C.GoString((*_Ctype_char)(es))
-			return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
+			return out, fmt.Errorf("%s: querySync(): %s for uri %d", libname(), err_string, session.error_index)
 		}
 	default:
 		if err_status != GNET_SNMP_PDU_ERR_NOERROR {
 			es := C.get_err_label(session.error_status)
 			err_string := C.GoString((*_Ctype_char)(es))
-			return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
+			return out, fmt.Errorf("%s: querySync(): %s for uri %d", libname(), err_string, session.error_index)
 		}
 	}
 
