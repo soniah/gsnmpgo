@@ -41,6 +41,9 @@ Here is an example of installation on Ubuntu Precise 12.04.1:
     go get -d github.com/petar/GoLLRB
     go install github.com/petar/GoLLRB/llrb
 
+    # install tcgl/applog
+    go get code.google.com/p/tcgl/applog
+
     # install gsnmpgo
     go get -d github.com/soniah/gsnmpgo
     sudo aptitude install libglib2.0-dev libgsnmp0-dev libgnet-dev

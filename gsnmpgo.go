@@ -50,12 +50,16 @@ vbl_delete(GList *list) {
 import "C"
 
 import (
+	"code.google.com/p/tcgl/applog"
 	"fmt"
 	"github.com/petar/GoLLRB/llrb"
 	"strconv"
 	"strings"
 	"unsafe"
 )
+
+// the maximum number of paths that can be in a single uri
+const MAX_URI_COUNT = 50
 
 var Debug bool // global debugging flag
 
@@ -96,33 +100,44 @@ func NewDefaultParams(uri string) *QueryParams {
 		// moment.
 		Nonrep: 1,
 		Maxrep: 100,
-		Tree:   nil,
 	}
 }
 
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
 func Query(params *QueryParams) (results *llrb.Tree, err error) {
+
 	parsed_uri, err := parseURI(params.Uri)
 	if Debug {
-		fmt.Printf("parsed_uri: %s\n\n", parsed_uri)
+		applog.Debugf("parsed_uri: %s\n\n", parsed_uri)
 	}
 	if err != nil {
+		return nil, err
+	}
+
+	path := C.GoString((*C.char)(parsed_uri.path))
+	if Debug {
+		applog.Warningf("number of incoming uris: %d", uriCount(path))
+	}
+	if err := uriCountMaxed(path, MAX_URI_COUNT); err != nil {
 		return nil, err
 	}
 
 	vbl, uritype, err := parsePath(params.Uri, parsed_uri)
 	defer uriDelete(parsed_uri)
 	if Debug {
-		fmt.Printf("vbl, uritype: %s, %s\n\n", gListOidsString(vbl), uritype)
+		applog.Debugf("vbl, uritype: %s, %s", gListOidsString(vbl), uritype)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	session, err := newUri(params, parsed_uri)
-	if Debug {
-		fmt.Printf("session: %s\n\n", session)
-	}
+	/*
+		causing <undefined symbol: gnet_snmp_taddress_get_short_name>
+		if Debug {
+			applog.Warningf("session: %s\n\n", session)
+		}
+	*/
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +189,7 @@ func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	var gerror *C.GError
 	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
 	if parsed_uri == nil {
-		return nil, fmt.Errorf("%s: invalid snmp uri: %s", libname(), uri)
+		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
 	}
 	return parsed_uri, nil
 }
@@ -194,7 +209,7 @@ func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype 
 	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
 	if rv == 0 {
 		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		return vbl, uritype, fmt.Errorf("%s: %s: <%s>", libname(), err_string, uri)
+		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
 	}
 	return vbl, uritype, nil
 }
@@ -216,6 +231,7 @@ func vblDelete(vbl *_Ctype_GList) {
 
 // newUri creates a session from a parsed uri.
 func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
+
 	var gerror *C.GError
 	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
 
@@ -223,16 +239,18 @@ func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetS
 	if gerror != nil {
 		err_string := C.GoString((*_Ctype_char)(gerror.message))
 		C.g_clear_error(&gerror)
-		return session, fmt.Errorf("%s: %s", libname(), err_string)
+		return session, fmt.Errorf("%s: newUri(): %s", libname(), err_string)
 	}
 	if session == nil {
-		return session, fmt.Errorf("%s: unable to create session", libname())
+		return session, fmt.Errorf("%s: newUri(): unable to create session", libname())
 	}
-	session.version = (_Ctype_GNetSnmpVersion)(params.Version)
-	session.timeout = (_Ctype_guint)(params.Timeout)
-	session.retries = (_Ctype_guint)(params.Retries)
 
-	// results
+	if params.Version == GNET_SNMP_V1 { // default in library is v2c
+		C.gnet_snmp_set_version(session, 0)
+	}
+	C.gnet_snmp_set_timeout(session, (_Ctype_guint)(params.Timeout))
+	C.gnet_snmp_set_retries(session, (_Ctype_guint)(params.Timeout))
+
 	return session, nil
 }
 
@@ -245,7 +263,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 	var out *_Ctype_GList
 
 	if Debug {
-		fmt.Printf("Starting a %s\n\n", uritype)
+		applog.Debugf("Starting a %s", uritype)
 	}
 	switch UriType(uritype) {
 	case GNET_SNMP_URI_GET:
@@ -265,34 +283,20 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 		return nil, fmt.Errorf("%s: querySync(): unknown uritype", libname())
 	}
 
-	// error handling
-	if gerror != nil {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		C.g_clear_error(&gerror)
-		return out, fmt.Errorf("%s: %s", libname(), err_string)
-	}
-	err_status := PduError(session.error_status)
-	switch UriType(uritype) {
-	case GNET_SNMP_URI_WALK:
-		if err_status != GNET_SNMP_PDU_ERR_NOERROR && err_status != GNET_SNMP_PDU_ERR_NOSUCHNAME {
-			es := C.get_err_label(session.error_status)
-			err_string := C.GoString((*_Ctype_char)(es))
-			return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
-		}
-	default:
-		if err_status != GNET_SNMP_PDU_ERR_NOERROR {
-			es := C.get_err_label(session.error_status)
-			err_string := C.GoString((*_Ctype_char)(es))
-			return out, fmt.Errorf("%s: %s for uri %d", libname(), err_string, session.error_index)
-		}
-	}
+	/*
+		Originally error handling was done at this point, like
+		gsnmp-0.3.0/examples/gsnmp-get.c. However in production too many results
+		were being discarded. Hence just return out, and convertResults() will
+		convert any errors in out to nil values.
+	*/
 
-	// results
 	return out, nil
 }
 
 // convertResults converts C results to a Go struct.
 func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
+
+	var out_count int
 
 	// create or re-use an existing llrb Tree
 	if params.Tree == nil {
@@ -304,10 +308,14 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 	for {
 		if out == nil {
 			// finished
+			if Debug {
+				applog.Warningf("number of results converted: %d", out_count)
+			}
 			return results
 		}
 
 		// another result: initialise
+		out_count++
 		data := (*C.GNetSnmpVarBind)(out.data)
 		oid := gIntArrayOidString(data.oid, data.oid_len)
 		var value Varbinder
@@ -355,6 +363,7 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
 			value = new(VBT_EndOfMibView)
+
 		}
 		result := QueryResult{Oid: oid, Value: value}
 		results.ReplaceOrInsert(result)
@@ -418,8 +427,12 @@ func LessOID(astruct, bstruct interface{}) bool {
 // 'P' stands for Predicate (like foo? in Ruby, foop in Lisp)
 //
 func PartitionAllP(current_position, partition_size, slice_length int) bool {
-	if current_position <= 0 || current_position >= slice_length {
+	// TODO should handle partition_size > slice_length, slice_length < 0
+	if current_position < 0 || current_position >= slice_length {
 		return false
+	}
+	if partition_size == 1 { // redundant, but an obvious optimisation
+		return true
 	}
 	if current_position%partition_size == partition_size-1 {
 		return true
@@ -428,4 +441,23 @@ func PartitionAllP(current_position, partition_size, slice_length int) bool {
 		return true
 	}
 	return false
+}
+
+// uriCount returns a count of the number of uri's in the path
+func uriCount(path string) int {
+	left_paren := strings.Index(path, "(")
+	right_paren := strings.Index(path, ")")
+	if left_paren < 0 || right_paren < 0 {
+		return -1
+	}
+	uris := path[left_paren+1 : right_paren]
+	return len(strings.Split(uris, ","))
+}
+
+// uriCountMaxed returns an error if there are more uri's in path than max
+func uriCountMaxed(path string, max int) (err error) {
+	if uri_count := uriCount(path); uri_count > max {
+		return fmt.Errorf("number of uris is greater than max (%d/%d) in path %s", uri_count, max, path)
+	}
+	return nil
 }
