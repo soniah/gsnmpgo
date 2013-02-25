@@ -150,3 +150,30 @@ func TestPartitionAllP(t *testing.T) {
 		}
 	}
 }
+
+// -----------------------------------------------------------------------------
+
+var tests_uriCountMaxed = []struct {
+	path string
+	max  int
+	ok   bool
+}{
+	{"", 3, true},                          // malformed
+	{"((", 3, true},                        // malformed
+	{"))", 3, true},                        // malformed
+	{"())", 3, true},                       // malformed
+	{"(,,)", 3, true},                      // malformed
+	{"(,,,,)", 3, false},                   // malformed
+	{"path://()", 3, true},                 // zero
+	{"path://(1.2,1.3)", 3, true},          // less than
+	{"path://(1.2,1.3,1.4)", 3, true},      // equal
+	{"path://(1.2,1.3,1.4,1.5)", 3, false}, // greater than
+}
+
+func Test_uriCountMaxed(t *testing.T) {
+	for i, test := range tests_uriCountMaxed {
+		if err := uriCountMaxed(test.path, test.max); (err == nil) != test.ok {
+			t.Errorf("#%d: expected %t got |%v| max:%d path:%s", i, test.ok, err, test.max, test.path)
+		}
+	}
+}

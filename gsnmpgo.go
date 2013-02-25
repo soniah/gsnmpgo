@@ -57,6 +57,9 @@ import (
 	"unsafe"
 )
 
+// the maximum number of paths that can be in a single uri
+const MAX_URI_COUNT = 50
+
 var Debug bool // global debugging flag
 
 // A single result, used as an Item in the llrb tree
@@ -107,6 +110,10 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 		fmt.Printf("parsed_uri: %s\n\n", parsed_uri)
 	}
 	if err != nil {
+		return nil, err
+	}
+	path := C.GoString((*C.char)(parsed_uri.path))
+	if err = uriCountMaxed(path, MAX_URI_COUNT); err != nil {
 		return nil, err
 	}
 
@@ -413,4 +420,23 @@ func PartitionAllP(current_position, partition_size, slice_length int) bool {
 		return true
 	}
 	return false
+}
+
+// uriCount returns a count of the number of uri's in the path
+func uriCount(path string) int {
+	left_paren := strings.Index(path, "(")
+	right_paren := strings.Index(path, ")")
+	if left_paren < 0 || right_paren < 0 {
+		return -1
+	}
+	uris := path[left_paren+1 : right_paren]
+	return len(strings.Split(uris, ","))
+}
+
+// uriCountMaxed returns an error if there are more uri's in path than max
+func uriCountMaxed(path string, max int) (err error) {
+	if uri_count := uriCount(path); uri_count > max {
+		return fmt.Errorf("number of uris is greater than max (%d/%d) in path %s", uri_count, max, path)
+	}
+	return nil
 }
