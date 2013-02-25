@@ -127,9 +127,12 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	}
 
 	session, err := newUri(params, parsed_uri)
+	/*
+	causing <undefined symbol: gnet_snmp_taddress_get_short_name>
 	if Debug {
 		fmt.Printf("session: %s\n\n", session)
 	}
+	*/
 	if err != nil {
 		return nil, err
 	}
