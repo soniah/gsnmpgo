@@ -105,22 +105,27 @@ func NewDefaultParams(uri string) *QueryParams {
 
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
 func Query(params *QueryParams) (results *llrb.Tree, err error) {
+
 	parsed_uri, err := parseURI(params.Uri)
 	if Debug {
-		applog.Warningf("parsed_uri: %s\n\n", parsed_uri)
+		applog.Debugf("parsed_uri: %s\n\n", parsed_uri)
 	}
 	if err != nil {
 		return nil, err
 	}
+
 	path := C.GoString((*C.char)(parsed_uri.path))
-	if err = uriCountMaxed(path, MAX_URI_COUNT); err != nil {
+	if Debug {
+		applog.Warningf("number of incoming uris: %d", uriCount(path))
+	}
+	if err := uriCountMaxed(path, MAX_URI_COUNT); err != nil {
 		return nil, err
 	}
 
 	vbl, uritype, err := parsePath(params.Uri, parsed_uri)
 	defer uriDelete(parsed_uri)
 	if Debug {
-		applog.Warningf("vbl, uritype: %s, %s\n\n", gListOidsString(vbl), uritype)
+		applog.Debugf("vbl, uritype: %s, %s", gListOidsString(vbl), uritype)
 	}
 	if err != nil {
 		return nil, err
@@ -128,10 +133,10 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 
 	session, err := newUri(params, parsed_uri)
 	/*
-	causing <undefined symbol: gnet_snmp_taddress_get_short_name>
-	if Debug {
-		applog.Warningf("session: %s\n\n", session)
-	}
+		causing <undefined symbol: gnet_snmp_taddress_get_short_name>
+		if Debug {
+			applog.Warningf("session: %s\n\n", session)
+		}
 	*/
 	if err != nil {
 		return nil, err
@@ -255,7 +260,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 	var out *_Ctype_GList
 
 	if Debug {
-		applog.Warningf("Starting a %s\n\n", uritype)
+		applog.Debugf("Starting a %s", uritype)
 	}
 	switch UriType(uritype) {
 	case GNET_SNMP_URI_GET:
@@ -296,9 +301,13 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree,
 	}
 
 	var err_string string
+	var out_count int
 	for {
 		if out == nil {
 			// finished
+			if Debug {
+				applog.Warningf("number of results converted: %d", out_count)
+			}
 			if len(err_string) == 0 {
 				return results, nil
 			} else {
@@ -307,6 +316,7 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree,
 		}
 
 		// another result: initialise
+		out_count++
 		data := (*C.GNetSnmpVarBind)(out.data)
 		oid := gIntArrayOidString(data.oid, data.oid_len)
 		var value Varbinder
