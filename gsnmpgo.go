@@ -50,6 +50,7 @@ vbl_delete(GList *list) {
 import "C"
 
 import (
+	"code.google.com/p/tcgl/applog"
 	"fmt"
 	"github.com/petar/GoLLRB/llrb"
 	"strconv"
@@ -106,7 +107,7 @@ func NewDefaultParams(uri string) *QueryParams {
 func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	parsed_uri, err := parseURI(params.Uri)
 	if Debug {
-		fmt.Printf("parsed_uri: %s\n\n", parsed_uri)
+		applog.Warningf("parsed_uri: %s\n\n", parsed_uri)
 	}
 	if err != nil {
 		return nil, err
@@ -119,7 +120,7 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	vbl, uritype, err := parsePath(params.Uri, parsed_uri)
 	defer uriDelete(parsed_uri)
 	if Debug {
-		fmt.Printf("vbl, uritype: %s, %s\n\n", gListOidsString(vbl), uritype)
+		applog.Warningf("vbl, uritype: %s, %s\n\n", gListOidsString(vbl), uritype)
 	}
 	if err != nil {
 		return nil, err
@@ -129,7 +130,7 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	/*
 	causing <undefined symbol: gnet_snmp_taddress_get_short_name>
 	if Debug {
-		fmt.Printf("session: %s\n\n", session)
+		applog.Warningf("session: %s\n\n", session)
 	}
 	*/
 	if err != nil {
@@ -254,7 +255,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 	var out *_Ctype_GList
 
 	if Debug {
-		fmt.Printf("Starting a %s\n\n", uritype)
+		applog.Warningf("Starting a %s\n\n", uritype)
 	}
 	switch UriType(uritype) {
 	case GNET_SNMP_URI_GET:
