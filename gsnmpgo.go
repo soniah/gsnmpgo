@@ -99,7 +99,6 @@ func NewDefaultParams(uri string) *QueryParams {
 		// moment.
 		Nonrep: 1,
 		Maxrep: 100,
-		Tree:   nil,
 	}
 }
 
