@@ -139,7 +139,7 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return convertResults(params, vbl_results), nil
+	return convertResults(params, vbl_results)
 }
 
 // Dump is a convenience function for printing the results of a Query.
@@ -283,7 +283,7 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 }
 
 // convertResults converts C results to a Go struct.
-func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
+func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree, err error) {
 
 	// create or re-use an existing llrb Tree
 	if params.Tree == nil {
@@ -292,10 +292,15 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 		results = params.Tree
 	}
 
+	var err_string string
 	for {
 		if out == nil {
 			// finished
-			return results
+			if len(err_string) == 0 {
+				return results, nil
+			} else {
+				return results, fmt.Errorf(err_string)
+			}
 		}
 
 		// another result: initialise
@@ -346,6 +351,9 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
 			value = new(VBT_EndOfMibView)
+
+		default:
+			err_string += fmt.Sprintf("Oid %s unrecognised varbind type %s\n", oid, vbt)
 
 		}
 		result := QueryResult{Oid: oid, Value: value}
