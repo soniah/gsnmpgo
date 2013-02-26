@@ -245,15 +245,12 @@ func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetS
 		return session, fmt.Errorf("%s: newUri(): unable to create session", libname())
 	}
 
-	if params.Version == GNET_SNMP_V1 {
+	if params.Version == GNET_SNMP_V1 { // default in library is v2c
 		C.gnet_snmp_set_version(session, 0)
 	}
+	C.gnet_snmp_set_timeout(session, (_Ctype_guint)(params.Timeout))
+	C.gnet_snmp_set_retries(session, (_Ctype_guint)(params.Timeout))
 
-	// TODO ditto for timeout, retries
-	session.timeout = (_Ctype_guint)(params.Timeout)
-	session.retries = (_Ctype_guint)(params.Retries)
-
-	// results
 	return session, nil
 }
 
