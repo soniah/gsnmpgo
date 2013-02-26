@@ -231,6 +231,7 @@ func vblDelete(vbl *_Ctype_GList) {
 
 // newUri creates a session from a parsed uri.
 func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
+
 	var gerror *C.GError
 	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
 
@@ -243,7 +244,12 @@ func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetS
 	if session == nil {
 		return session, fmt.Errorf("%s: newUri(): unable to create session", libname())
 	}
-	session.version = (_Ctype_GNetSnmpVersion)(params.Version)
+
+	if params.Version == GNET_SNMP_V1 {
+		C.gnet_snmp_set_version(session, 0)
+	}
+
+	// TODO ditto for timeout, retries
 	session.timeout = (_Ctype_guint)(params.Timeout)
 	session.retries = (_Ctype_guint)(params.Retries)
 
