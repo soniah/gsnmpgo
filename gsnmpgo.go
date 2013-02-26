@@ -370,10 +370,6 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree,
 
 		case GNET_SNMP_VARBIND_TYPE_ENDOFMIBVIEW:
 			value = new(VBT_EndOfMibView)
-
-		default:
-			err_string += fmt.Sprintf("Oid %s unrecognised varbind type %s\n", oid, vbt)
-
 		}
 		result := QueryResult{Oid: oid, Value: value}
 		results.ReplaceOrInsert(result)
