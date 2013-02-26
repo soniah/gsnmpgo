@@ -431,8 +431,12 @@ func LessOID(astruct, bstruct interface{}) bool {
 // 'P' stands for Predicate (like foo? in Ruby, foop in Lisp)
 //
 func PartitionAllP(current_position, partition_size, slice_length int) bool {
-	if current_position <= 0 || current_position >= slice_length {
+	// TODO should handle partition_size > slice_length, slice_length < 0
+	if current_position < 0 || current_position >= slice_length {
 		return false
+	}
+	if partition_size == 1 { // redundant, but an obvious optimisation
+		return true
 	}
 	if current_position%partition_size == partition_size-1 {
 		return true

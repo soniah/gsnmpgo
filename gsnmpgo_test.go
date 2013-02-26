@@ -140,6 +140,11 @@ var partitionAllPTests = []struct {
 	{5, 3, 8, true},
 	{6, 3, 8, false},
 	{7, 3, 8, true},
+	{-1, 1, 3, false}, // partition size of one
+	{0, 1, 3, true},
+	{1, 1, 3, true},
+	{2, 1, 3, true},
+	{3, 1, 3, false},
 }
 
 func TestPartitionAllP(t *testing.T) {
