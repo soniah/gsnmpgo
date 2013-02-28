@@ -427,6 +427,11 @@ func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 
 	var gerror *C.GError
 	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
+	if gerror != nil {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
+		return nil, fmt.Errorf("%s: parseURI(): %s", libname(), err_string)
+	}
 	if parsed_uri == nil {
 		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
 	}
