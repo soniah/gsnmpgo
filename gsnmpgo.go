@@ -118,20 +118,6 @@ func Dump(results *llrb.Tree) {
 }
 
 // parseURI parses an SNMP URI into fields.
-//
-// The generic URI parsing is done by gnet_uri_new(), and the SNMP specific
-// portions by gnet_snmp_parse_uri(). Only basic URI validation is done here,
-// more is done by parsePath()
-//
-// Example:
-//
-//    uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
-//    parsed_uri, err := gsnmpgo.parseURI(uri)
-//    if err != nil {
-//    	fmt.Println(err)
-//    	os.Exit(1)
-//    }
-//    fmt.Println("parseURI():", parsed_uri)
 func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	curi := (*C.gchar)(C.CString(uri))
 	defer C.free(unsafe.Pointer(curi))
