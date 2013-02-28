@@ -72,9 +72,7 @@ type QueryResult struct {
 
 // Struct of parameters to pass to Query
 type QueryParams struct {
-	Uri string
-	// an array of Oids to retrieve, for GetMany()
-	Oids    []string
+	Uri     string
 	Version SnmpVersion
 	Timeout int // timeout in milliseconds
 	Retries int // number of retries
@@ -87,6 +85,12 @@ type QueryParams struct {
 	// if Tree is non-nil, it will be used for appending Query()
 	// results eg when doing two GETs in a row
 	Tree *llrb.Tree
+	//
+	// GetMany()
+	//
+	Community string
+	IPAddress string
+	Oids      []string
 	// internal
 	send  chan ([]string)
 	recv  chan (string)
