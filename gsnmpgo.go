@@ -55,6 +55,7 @@ import (
 	"github.com/petar/GoLLRB/llrb"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -71,7 +72,9 @@ type QueryResult struct {
 
 // Struct of parameters to pass to Query
 type QueryParams struct {
-	Uri     string
+	Uri string
+	// an array of Oids to retrieve, for GetMany()
+	Oids    []string
 	Version SnmpVersion
 	Timeout int // timeout in milliseconds
 	Retries int // number of retries
@@ -84,6 +87,10 @@ type QueryParams struct {
 	// if Tree is non-nil, it will be used for appending Query()
 	// results eg when doing two GETs in a row
 	Tree *llrb.Tree
+	// internal
+	send  chan ([]string)
+	recv  chan (string)
+	cycle <-chan time.Time
 }
 
 func NewDefaultParams(uri string) *QueryParams {
@@ -462,6 +469,40 @@ func uriCount(path string) int {
 func uriCountMaxed(path string, max int) (err error) {
 	if uri_count := uriCount(path); uri_count > max {
 		return fmt.Errorf("number of uris is greater than max (%d/%d) in path %s", uri_count, max, path)
+	}
+	return nil
+}
+
+func (qp *QueryParams) GetMany() error {
+	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
+	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
+
+	// TODO parseUri, create session, etc...
+
+	var oids []string
+	for count, oid := range qp.Oids {
+		oids = append(oids, oid)
+		// if PartitionAllP(count, MAX_URI_COUNT, len(ss.oids)) {
+		if PartitionAllP(count, 2, len(qp.Oids)) {
+			qp.send <- oids
+			oids = nil // "truncate" oids
+		}
+	}
+
+	qp.cycle = time.After(500 * time.Microsecond)
+	for {
+		select {
+
+		case sendoids := <-qp.send:
+			fmt.Printf("send: got sendoids |%s|\n", sendoids)
+
+		case results := <-qp.recv:
+			fmt.Printf("recv: got results |%s|\n", results)
+
+		case <-qp.cycle:
+			return nil
+
+		}
 	}
 	return nil
 }
