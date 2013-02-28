@@ -41,11 +41,11 @@ get_err_label(gint32 const id) {
 }
 
 // convenience wrapper for freeing a var bind list
-static void
-vbl_delete(GList *list) {
-	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
-	g_list_free(list);
-}
+// static void
+// vbl_delete(GList *list) {
+// 	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
+// 	g_list_free(list);
+// }
 */
 import "C"
 
@@ -61,12 +61,6 @@ import (
 )
 
 var Debug bool // global debugging flag
-
-// A single result, used as an Item in the llrb tree
-type QueryResult struct {
-	Oid   string
-	Value Varbinder
-}
 
 // Struct of parameters to pass to Query
 type QueryParams struct {
@@ -96,54 +90,72 @@ type QueryParams struct {
 	cycle <-chan time.Time
 }
 
-// Dump is a convenience function for printing the results of a Query.
-func Dump(results *llrb.Tree) {
-	if results == nil {
-		fmt.Println("Dump: results are NIL")
-		return
-	}
-	fmt.Println("Dump:")
-	ch := results.IterAscend()
-	for {
-		r := <-ch
-		if r == nil {
-			break
+// A single result, used as an Item in the llrb tree
+type QueryResult struct {
+	Oid   string
+	Value Varbinder
+}
+
+// GetMany does SNMP Get's on a slice of Oids.
+func (qp *QueryParams) GetMany() error {
+	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
+	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
+
+	var oids []string
+	for count, oid := range qp.Oids {
+		oids = append(oids, oid)
+		// if PartitionAllP(count, MAX_URI_COUNT, len(ss.oids)) {
+		if PartitionAllP(count, 2, len(qp.Oids)) {
+			qp.send <- oids
+			oids = nil // "truncate" oids
 		}
-		result := r.(QueryResult)
-		fmt.Printf("oid, type: %s, %T\n", result.Oid, result.Value)
-		fmt.Printf("INTEGER: %d\n", result.Value.Integer())
-		fmt.Printf("STRING : %s\n", result.Value)
-		fmt.Println()
 	}
+
+	qp.cycle = time.After(1000 * time.Microsecond)
+	for {
+		select {
+
+		case sendoids := <-qp.send:
+			if Debug {
+				applog.Debugf("send: got sendoids |%s|", sendoids)
+			}
+			uri, err := qp.BuildUri(sendoids)
+			if err != nil {
+				return err
+			}
+			session, vbl, err := qp.NewSession(uri)
+			if err != nil {
+				return err
+			}
+			defer C.free(unsafe.Pointer(session))
+			if Debug {
+				applog.Debugf("dummy: session: %v", session)
+				applog.Debugf("dummy: vbl: %v", vbl)
+			}
+
+		case results := <-qp.recv:
+			if Debug {
+				applog.Debugf("recv: got results |%s|", results)
+			}
+
+		case <-qp.cycle:
+			return nil
+
+		}
+	}
+	return nil
 }
 
-// parseURI parses an SNMP URI into fields.
-func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
-	curi := (*C.gchar)(C.CString(uri))
-	defer C.free(unsafe.Pointer(curi))
+// ------------------- other functions in alphabetical order --------------------
 
-	var gerror *C.GError
-	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
-	if gerror != nil {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		C.g_clear_error(&gerror)
-		return nil, fmt.Errorf("%s: parseURI(): %s", libname(), err_string)
+// BuildUri builds a URI string from a slice of oids.
+//
+// eg snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
+func (qp QueryParams) BuildUri(oids []string) (string, error) {
+	if len(oids) == 0 {
+		return "", fmt.Errorf("BuildUri() requires at least one oid")
 	}
-	if parsed_uri == nil {
-		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
-	}
-	return parsed_uri, nil
-}
-
-// parsePath parses an SNMP URI in RFC 4088 format.
-func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
-	var gerror *C.GError
-	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
-	if rv == 0 {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
-	}
-	return vbl, uritype, nil
+	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
 }
 
 // convertResults converts C results to a Go struct.
@@ -227,9 +239,25 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 	panic(fmt.Sprintf("%s: convertResults(): fell out of for loop", libname()))
 }
 
-// libname returns the name of this library, for generating error messages.
-func libname() string {
-	return "gsnmpgo"
+// Dump is a convenience function for printing the results of a Query.
+func Dump(results *llrb.Tree) {
+	if results == nil {
+		fmt.Println("Dump: results are NIL")
+		return
+	}
+	fmt.Println("Dump:")
+	ch := results.IterAscend()
+	for {
+		r := <-ch
+		if r == nil {
+			break
+		}
+		result := r.(QueryResult)
+		fmt.Printf("oid, type: %s, %T\n", result.Oid, result.Value)
+		fmt.Printf("INTEGER: %d\n", result.Value.Integer())
+		fmt.Printf("STRING : %s\n", result.Value)
+		fmt.Println()
+	}
 }
 
 // LessOID is the LessFunc for GoLLRB
@@ -266,83 +294,38 @@ func LessOID(astruct, bstruct interface{}) bool {
 	return true
 }
 
-// PartitionAllP - returns true when dividing a slice into
-// partition_size lengths, including last partition which may be smaller
-// than partition_size.
-//
-// For example for a slice of 8 items to be broken into partitions of
-// length 3, PartitionAllP returns true for the current_position having
-// the following values:
-//
-// 0  1  2  3  4  5  6  7
-//       T        T     T
-//
-// 'P' stands for Predicate (like foo? in Ruby, foop in Lisp)
-//
-func PartitionAllP(current_position, partition_size, slice_length int) bool {
-	// TODO should handle partition_size > slice_length, slice_length < 0
-	if current_position < 0 || current_position >= slice_length {
-		return false
-	}
-	if partition_size == 1 { // redundant, but an obvious optimisation
-		return true
-	}
-	if current_position%partition_size == partition_size-1 {
-		return true
-	}
-	if current_position == slice_length-1 {
-		return true
-	}
-	return false
+// libname returns the name of this library, for generating error messages.
+func libname() string {
+	return "gsnmpgo"
 }
 
-func (qp *QueryParams) GetMany() error {
-	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
-	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
-
-	var oids []string
-	for count, oid := range qp.Oids {
-		oids = append(oids, oid)
-		// if PartitionAllP(count, MAX_URI_COUNT, len(ss.oids)) {
-		if PartitionAllP(count, 2, len(qp.Oids)) {
-			qp.send <- oids
-			oids = nil // "truncate" oids
-		}
+// parsePath parses an SNMP URI in RFC 4088 format.
+func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
+	var gerror *C.GError
+	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
+	if rv == 0 {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
 	}
+	return vbl, uritype, nil
+}
 
-	qp.cycle = time.After(1000 * time.Microsecond)
-	for {
-		select {
+// parseURI parses an SNMP URI into fields.
+func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
+	curi := (*C.gchar)(C.CString(uri))
+	defer C.free(unsafe.Pointer(curi))
 
-		case sendoids := <-qp.send:
-			if Debug {
-				applog.Debugf("send: got sendoids |%s|", sendoids)
-			}
-			uri, err := qp.BuildUri(sendoids)
-			if err != nil {
-				return err
-			}
-			session, vbl, err := qp.NewSession(uri)
-			if err != nil {
-				return err
-			}
-			defer C.free(unsafe.Pointer(session))
-			if Debug {
-				applog.Debugf("dummy: session: %v", session)
-				applog.Debugf("dummy: vbl: %v", vbl)
-			}
-
-		case results := <-qp.recv:
-			if Debug {
-				applog.Debugf("recv: got results |%s|", results)
-			}
-
-		case <-qp.cycle:
-			return nil
-
-		}
+	var gerror *C.GError
+	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
+	if gerror != nil {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
+		return nil, fmt.Errorf("%s: parseURI(): %s", libname(), err_string)
 	}
-	return nil
+	if parsed_uri == nil {
+		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
+	}
+	return parsed_uri, nil
 }
 
 func (qp QueryParams) NewSession(uri string) (*_Ctype_GNetSnmp, *_Ctype_GList, error) {
@@ -386,14 +369,34 @@ func (qp QueryParams) NewSession(uri string) (*_Ctype_GNetSnmp, *_Ctype_GList, e
 	return session, vbl, nil
 }
 
-// BuildUri builds a URI string from a slice of oids.
+// PartitionAllP - returns true when dividing a slice into
+// partition_size lengths, including last partition which may be smaller
+// than partition_size.
 //
-// eg snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
-func (qp QueryParams) BuildUri(oids []string) (string, error) {
-	if len(oids) == 0 {
-		return "", fmt.Errorf("BuildUri() requires at least one oid")
+// For example for a slice of 8 items to be broken into partitions of
+// length 3, PartitionAllP returns true for the current_position having
+// the following values:
+//
+// 0  1  2  3  4  5  6  7
+//       T        T     T
+//
+// 'P' stands for Predicate (like foo? in Ruby, foop in Lisp)
+//
+func PartitionAllP(current_position, partition_size, slice_length int) bool {
+	// TODO should handle partition_size > slice_length, slice_length < 0
+	if current_position < 0 || current_position >= slice_length {
+		return false
 	}
-	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
+	if partition_size == 1 { // redundant, but an obvious optimisation
+		return true
+	}
+	if current_position%partition_size == partition_size-1 {
+		return true
+	}
+	if current_position == slice_length-1 {
+		return true
+	}
+	return false
 }
 
 //
