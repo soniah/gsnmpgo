@@ -58,6 +58,7 @@ func main() {
 
 	log.SetFlags(0) // no verbosity
 	applog.SetLogger(&EgLogger{})
+	applog.SetLevel(applog.LevelWarning)
 
 	/*
 		.1.3.6.1.2.1.1.1.0 "Samsung ML-2850 Series OS 1.01.12.37 11-03-2008;Engine 1.01.23;NIC V4.01.03(ML-285x) 08-21-2008;S/N 4F50BAGS500082F "
