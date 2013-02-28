@@ -103,8 +103,6 @@ func (qp *QueryParams) GetMany() error {
 	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
 	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
 
-	// TODO parseUri, create session, etc...
-
 	var oids []string
 	for count, oid := range qp.Oids {
 		oids = append(oids, oid)
@@ -115,15 +113,32 @@ func (qp *QueryParams) GetMany() error {
 		}
 	}
 
-	qp.cycle = time.After(500 * time.Microsecond)
+	qp.cycle = time.After(1000 * time.Microsecond)
 	for {
 		select {
 
 		case sendoids := <-qp.send:
-			fmt.Printf("send: got sendoids |%s|\n", sendoids)
+			if Debug {
+				applog.Debugf("send: got sendoids |%s|", sendoids)
+			}
+			uri, err := qp.BuildUri(sendoids)
+			if err != nil {
+				return err
+			}
+			session, vbl, err := qp.NewSession(uri)
+			if err != nil {
+				return err
+			}
+			defer C.free(unsafe.Pointer(session))
+			if Debug {
+				applog.Debugf("dummy: session: %v", session)
+				applog.Debugf("dummy: vbl: %v", vbl)
+			}
 
 		case results := <-qp.recv:
-			fmt.Printf("recv: got results |%s|\n", results)
+			if Debug {
+				applog.Debugf("recv: got results |%s|", results)
+			}
 
 		case <-qp.cycle:
 			return nil
