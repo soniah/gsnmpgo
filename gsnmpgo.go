@@ -34,105 +34,30 @@ package gsnmpgo
 #include <gsnmp/gsnmp.h>
 #include <stdlib.h>
 
-//////////////////////////////////////////////////////////////////////////////////////
-//                                                                                  //
-// forward declarations                                                             //
-//                                                                                  //
-//////////////////////////////////////////////////////////////////////////////////////
+// declarations *only* in this C preamble - required to get '//export' working
 
-static gpointer
+gpointer
 j_async_send(GNetSnmp *session, GNetSnmpPduType type,
              GList *vbl, guint32 arg1, guint32 arg2, GError **error);
 
-static gboolean
+gboolean
 j_cb_done(GNetSnmp *session, GNetSnmpPdu *spdu, GList *objs, gpointer magic);
 
-static void
+void
 j_cb_time(GNetSnmp *session, void *magic);
 
-static void
+extern void
+Go_cb_time(GNetSnmp *session, void *magic);
+
+void
 j_sync_get(GNetSnmp *snmp, GList *pdu, GError **error);
 
-static void
+void
 j_sync_send(GNetSnmp *session, GNetSnmpPduType type,
             GList *objs, guint32 arg1, guint32 arg2, GError **error);
 
-
-//////////////////////////////////////////////////////////////////////////////////////
-//                                                                                  //
-// C functions in alphabetical order; functions are differentiated with j_ (vs g*_) //
-//                                                                                  //
-//////////////////////////////////////////////////////////////////////////////////////
-
-
-//
-// customised g_async_send
-//
-static gpointer
-j_async_send(GNetSnmp *session, GNetSnmpPduType type,
-             GList *vbl, guint32 arg1, guint32 arg2, GError **error)
-{
-	return NULL;
-}
-
-//
-// j_cb_done - dummy
-//
-static gboolean
-j_cb_done(GNetSnmp *session, GNetSnmpPdu *spdu, GList *objs, gpointer magic)
-{
-	return 1;
-}
-
-//
-// j_cb_time - dummy
-//
-static void
-j_cb_time(GNetSnmp *session, void *magic)
-{
-}
-
-//
-// customised gnet_snmp_sync_get
-//
-static void
-j_sync_get(GNetSnmp *snmp, GList *pdu, GError **error)
-{
-	gnet_snmp_debug_flags = GNET_SNMP_DEBUG_REQUESTS + GNET_SNMP_DEBUG_SESSION;
-    if (gnet_snmp_debug_flags & GNET_SNMP_DEBUG_SESSION) {
-        g_printerr("session %p: g_sync_get pdu %p\n", snmp, pdu);
-    }
-    j_sync_send(snmp, GNET_SNMP_PDU_GET, pdu, 0, 0, error);
-}
-
-static gboolean
-j_cb_done(GNetSnmp *session, GNetSnmpPdu *spdu, GList *objs, gpointer magic);
-
-//
-// customised g_sync_send. No "magic" - use Go concurrency.
-//
-static void
-j_sync_send(GNetSnmp *session, GNetSnmpPduType type,
-            GList *objs, guint32 arg1, guint32 arg2, GError **error)
-{
-    session->done_callback = j_cb_done;
-    session->time_callback = j_cb_time;
-    if (! j_async_send(session, type, objs, arg1, arg2, error)) {
-        if (gnet_snmp_debug_flags & GNET_SNMP_DEBUG_SESSION) {
-            g_printerr("session %p: g_sync_send failed to send PDU\n", session);
-        }
-    }
-}
-
-//
-// vbl_delete is wrapper for freeing a var bind list
-//
-static void
-j_vbl_delete(GList *list) {
-	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
-	g_list_free(list);
-}
-
+void
+j_vbl_delete(GList *list);
 */
 import "C"
 
@@ -187,6 +112,23 @@ type QueryResult struct {
 func (qp *QueryParams) GetMany() error {
 	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
 	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
+
+	/*
+		// dummy
+		//foo := C.cb_done("sess", "pdu", "objs", "magic")
+		s := "session"
+		m := "magic"
+		//C.cb_time(s, m)
+		C.gnet_snmp_sync_set("foo", "bar", "baz")
+
+		try getting cb_time going first - short decl :-)
+
+		session is *_Ctype_GNetSnmp
+		glist is *_Ctype_GList
+		spdu is ?
+		gpointer is ?
+		void* is ?
+	*/
 
 	var oids []string
 	for count, oid := range qp.Oids {
@@ -249,13 +191,6 @@ func (qp QueryParams) BuildUri(oids []string) (string, error) {
 	}
 	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
 }
-
-/*
-//export CBDone
-function CBDone() _Ctype_GBoolean {
-
-}
-*/
 
 // convertResults converts C results to a Go struct.
 func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
@@ -356,6 +291,24 @@ func Dump(results *llrb.Tree) {
 		fmt.Printf("INTEGER: %d\n", result.Value.Integer())
 		fmt.Printf("STRING : %s\n", result.Value)
 		fmt.Println()
+	}
+}
+
+// XXXX export j_cb_done
+// func j_cb_done(session string, pdutype string,
+// 	objs string, magic string) _Ctype_GBoolean {
+// 	return 1
+// }
+
+// func j_cb_done(session *_Ctype_GNetSnmp, pdutype *_Ctype_GNetSnmpPduType,
+// 	objs *_Ctype_GList, magic Ctype_gpointer) Ctype_gboolean {
+// 	return 1
+// }
+
+// export Go_cb_time
+func Go_cb_time(session *_Ctype_GNetSnmp, magic unsafe.Pointer) {
+	if Debug {
+		applog.Debugf("Go_cb_time() called")
 	}
 }
 
