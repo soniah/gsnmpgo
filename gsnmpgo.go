@@ -34,17 +34,18 @@ package gsnmpgo
 #include <gsnmp/gsnmp.h>
 #include <stdlib.h>
 
-// C functions in alphabetical order
+// C functions in alphabetical order; functions are differentiated with j_ (vs g*_)
 
-// get_err_label is a wrapper for gnet_snmp_enum_get_label()
-gchar const *
-get_err_label(gint32 const id) {
-	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
+// j_get_err_label is a wrapper for gnet_snmp_enum_get_label()
+// gchar const *
+// j_get_err_label(gint32 const id) {
+// 	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
+// }
 }
 
 // vbl_delete is wrapper for freeing a var bind list
 static void
-vbl_delete(GList *list) {
+j_vbl_delete(GList *list) {
 	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
 	g_list_free(list);
 }
@@ -128,13 +129,13 @@ func (qp *QueryParams) GetMany() error {
 			if err != nil {
 				return err
 			}
+
 			session, vbl, err := qp.NewSession(uri)
 			if err != nil {
 				return err
 			}
 			defer C.free(unsafe.Pointer(session))
-			defer C.vbl_delete(vbl)
-
+			defer C.j_vbl_delete(vbl)
 			if Debug {
 				applog.Debugf("dummy: session: %v", session)
 				applog.Debugf("dummy: vbl: %v", vbl)
@@ -584,7 +585,7 @@ func uridelete(parsed_uri *_ctype_guri) {
 // gnet_snmp_sync_get (or similar).
 /*
 func vblDelete(vbl *_Ctype_GList) {
-	C.vbl_delete(vbl)
+	C.j_vbl_delete(vbl)
 }
 */
 
