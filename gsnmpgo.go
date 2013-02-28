@@ -41,6 +41,14 @@ package gsnmpgo
 // j_get_err_label(gint32 const id) {
 // 	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
 // }
+
+static void
+j_sync_get(GNetSnmp *snmp, GList *pdu, GError **error)
+{
+	gnet_snmp_debug_flags = GNET_SNMP_DEBUG_REQUESTS + GNET_SNMP_DEBUG_SESSION;
+    if (gnet_snmp_debug_flags & GNET_SNMP_DEBUG_SESSION) {
+        g_printerr("session %p: g_sync_get pdu %p\n", snmp, pdu);
+    }
 }
 
 // vbl_delete is wrapper for freeing a var bind list
@@ -141,6 +149,9 @@ func (qp *QueryParams) GetMany() error {
 				applog.Debugf("dummy: vbl: %v", vbl)
 			}
 
+			var gerror *C.GError
+			C.j_sync_get(session, vbl, &gerror)
+
 		case results := <-qp.recv:
 			if Debug {
 				applog.Debugf("recv: got results |%s|", results)
@@ -212,6 +223,13 @@ func (qp QueryParams) BuildUri(oids []string) (string, error) {
 	}
 	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
 }
+
+/*
+//export CBDone
+function CBDone() _Ctype_GBoolean {
+
+}
+*/
 
 // convertResults converts C results to a Go struct.
 func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
