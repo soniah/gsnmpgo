@@ -23,6 +23,7 @@ j_async_send(GNetSnmp *session, GNetSnmpPduType type,
 gboolean
 j_cb_done(GNetSnmp *session, GNetSnmpPdu *spdu, GList *objs, gpointer magic)
 {
+    CBDone();
     return 1;
 }
 

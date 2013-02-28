@@ -5,3 +5,4 @@
 gosnmp
 gsnmp
 *.go_cog
+gocallback
