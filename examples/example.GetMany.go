@@ -18,13 +18,46 @@ package main
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import (
+	"code.google.com/p/tcgl/applog"
 	"fmt"
 	"github.com/soniah/gsnmpgo"
+	"log"
 	"net"
 )
 
+// EgLogger is a less verbose logger, useful while debugging
+type EgLogger struct{}
+
+func (el EgLogger) Debug(info, msg string) {
+	log.Println(msg)
+	log.Println()
+}
+
+func (el EgLogger) Info(info, msg string) {
+	log.Println(msg)
+	log.Println()
+}
+
+func (el EgLogger) Warning(info, msg string) {
+	log.Println(msg)
+	log.Println()
+}
+
+func (el EgLogger) Error(info, msg string) {
+	log.Println(msg)
+	log.Println()
+}
+
+func (el EgLogger) Critical(info, msg string) {
+	log.Println(msg)
+	log.Println()
+}
+
 func main() {
 	gsnmpgo.Debug = true
+
+	log.SetFlags(0) // no verbosity
+	applog.SetLogger(&EgLogger{})
 
 	/*
 		.1.3.6.1.2.1.1.1.0 "Samsung ML-2850 Series OS 1.01.12.37 11-03-2008;Engine 1.01.23;NIC V4.01.03(ML-285x) 08-21-2008;S/N 4F50BAGS500082F "
