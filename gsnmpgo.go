@@ -330,6 +330,47 @@ func (qp *QueryParams) GetMany() error {
 	return nil
 }
 
+func (qp QueryParams) NewSession(uri string) (*_Ctype_GNetSnmp, *_Ctype_GList, error) {
+
+	parsed_uri, err := parseURI(uri)
+	if Debug {
+		applog.Debugf("parsed_uri: %s", parsed_uri)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	vbl, uritype, err := parsePath(uri, parsed_uri)
+	defer C.gnet_uri_delete(parsed_uri)
+	if Debug {
+		applog.Debugf("vbl, uritype: %s, %s", gListOidsString(vbl), uritype)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var gerror *C.GError
+	session := C.gnet_snmp_new_uri(parsed_uri, &gerror)
+
+	// error handling
+	if gerror != nil {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
+		return nil, nil, fmt.Errorf("%s: newUri(): %s", libname(), err_string)
+	}
+	if session == nil {
+		return nil, nil, fmt.Errorf("%s: newUri(): unable to create session", libname())
+	}
+
+	if qp.Version == GNET_SNMP_V1 { // default in library is v2c
+		C.gnet_snmp_set_version(session, 0)
+	}
+	C.gnet_snmp_set_timeout(session, (_Ctype_guint)(qp.Timeout))
+	C.gnet_snmp_set_retries(session, (_Ctype_guint)(qp.Timeout))
+
+	return session, vbl, nil
+}
+
 // BuildUri builds a URI string from a slice of oids.
 //
 // eg snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
