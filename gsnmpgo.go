@@ -141,12 +141,12 @@ func (qp QueryParams) BuildUri(oids []string) (string, error) {
 	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
 }
 
-/*
 //export CBDone
-function CBDone() _Ctype_GBoolean {
-
+func CBDone() {
+	// TODO could have a "done" channel, send on that
+	// would make faster, rather than waiting for timeout
+	fmt.Println("CBDone()")
 }
-*/
 
 // convertResults converts C results to a Go struct.
 func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
