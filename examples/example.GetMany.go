@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"github.com/soniah/gsnmpgo"
+	"net"
 )
 
 func main() {
@@ -39,7 +40,8 @@ func main() {
 
 	params := &gsnmpgo.QueryParams{
 		Community: "public",
-		IPAddress: "192.168.1.10",
+		IP:        net.ParseIP("192.168.1.10"),
+		Port:      161,
 		Version:   gsnmpgo.GNET_SNMP_V2C,
 		Oids:      oids,
 	}

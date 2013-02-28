@@ -53,6 +53,7 @@ import (
 	"code.google.com/p/tcgl/applog"
 	"fmt"
 	"github.com/petar/GoLLRB/llrb"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -89,7 +90,8 @@ type QueryParams struct {
 	// GetMany()
 	//
 	Community string
-	IPAddress string
+	IP        net.IP
+	Port      uint16
 	Oids      []string
 	// internal
 	send  chan ([]string)
@@ -509,4 +511,14 @@ func (qp *QueryParams) GetMany() error {
 		}
 	}
 	return nil
+}
+
+// BuildUri builds a URI string from a slice of oids.
+//
+// eg snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
+func (qp QueryParams) BuildUri(oids []string) (string, error) {
+	if len(oids) == 0 {
+		return "", fmt.Errorf("BuildUri() requires at least one oid")
+	}
+	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
 }
