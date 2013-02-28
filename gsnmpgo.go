@@ -130,6 +130,8 @@ func (qp *QueryParams) GetMany() error {
 				return err
 			}
 			defer C.free(unsafe.Pointer(session))
+			defer C.vbl_delete(vbl)
+
 			if Debug {
 				applog.Debugf("dummy: session: %v", session)
 				applog.Debugf("dummy: vbl: %v", vbl)
