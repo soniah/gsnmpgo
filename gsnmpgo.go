@@ -34,18 +34,21 @@ package gsnmpgo
 #include <gsnmp/gsnmp.h>
 #include <stdlib.h>
 
-// convenience wrapper for gnet_snmp_enum_get_label()
+// C functions in alphabetical order
+
+// get_err_label is a wrapper for gnet_snmp_enum_get_label()
 gchar const *
 get_err_label(gint32 const id) {
 	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
 }
 
-// convenience wrapper for freeing a var bind list
+// vbl_delete is wrapper for freeing a var bind list
 static void
 vbl_delete(GList *list) {
 	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
 	g_list_free(list);
 }
+
 */
 import "C"
 
