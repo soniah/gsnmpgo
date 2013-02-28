@@ -130,16 +130,7 @@ func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
 	return parsed_uri, nil
 }
 
-// parsePath parses an SNMP URI.
-//
-// The uritype will default to GNET_SNMP_URI_GET. If the uri ends in:
-//
-// '*' the uritype will be GNET_SNMP_URI_WALK
-//
-// '+' the uritype will be GNET_SNMP_URI_NEXT
-//
-// See RFC 4088 "Uniform Resource Identifier (URI) Scheme for the Simple
-// Network Management Protocol (SNMP)" for further documentation.
+// parsePath parses an SNMP URI in RFC 4088 format.
 func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
 	var gerror *C.GError
 	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
