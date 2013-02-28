@@ -41,11 +41,11 @@ get_err_label(gint32 const id) {
 }
 
 // convenience wrapper for freeing a var bind list
-// static void
-// vbl_delete(GList *list) {
-// 	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
-// 	g_list_free(list);
-// }
+static void
+vbl_delete(GList *list) {
+	g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
+	g_list_free(list);
+}
 */
 import "C"
 
@@ -128,6 +128,8 @@ func (qp *QueryParams) GetMany() error {
 				return err
 			}
 			defer C.free(unsafe.Pointer(session))
+			defer C.vbl_delete(vbl)
+
 			if Debug {
 				applog.Debugf("dummy: session: %v", session)
 				applog.Debugf("dummy: vbl: %v", vbl)
