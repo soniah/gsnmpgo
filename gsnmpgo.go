@@ -152,6 +152,10 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 
 // Dump is a convenience function for printing the results of a Query.
 func Dump(results *llrb.Tree) {
+	if results == nil {
+		fmt.Println("Dump: results are NIL")
+		return
+	}
 	fmt.Println("Dump:")
 	ch := results.IterAscend()
 	for {
