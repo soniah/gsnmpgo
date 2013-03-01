@@ -12,10 +12,10 @@
 #include <stdlib.h>
 
 // get_err_label is a wrapper for gnet_snmp_enum_get_label()
-gchar const *
-get_err_label(gint32 const id) {
-	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
-}
+// gchar const *
+// get_err_label(gint32 const id) {
+// 	return gnet_snmp_enum_get_label(gnet_snmp_enum_error_table, id);
+// }
 
 // vbl_delete is a wrapper for freeing a var bind list
 void
