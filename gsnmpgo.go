@@ -289,35 +289,6 @@ func libname() string {
 	return "gsnmpgo"
 }
 
-// parsePath parses an SNMP URI in RFC 4088 format.
-func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
-	var gerror *C.GError
-	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
-	if rv == 0 {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
-	}
-	return vbl, uritype, nil
-}
-
-// parseURI parses an SNMP URI into fields.
-func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
-	curi := (*C.gchar)(C.CString(uri))
-	defer C.free(unsafe.Pointer(curi))
-
-	var gerror *C.GError
-	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
-	if gerror != nil {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		C.g_clear_error(&gerror)
-		return nil, fmt.Errorf("%s: parseURI(): %s", libname(), err_string)
-	}
-	if parsed_uri == nil {
-		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
-	}
-	return parsed_uri, nil
-}
-
 func (qp QueryParams) NewSession(uri string) (*_Ctype_GNetSnmp, *_Ctype_GList, error) {
 
 	parsed_uri, err := parseURI(uri)
@@ -357,6 +328,35 @@ func (qp QueryParams) NewSession(uri string) (*_Ctype_GNetSnmp, *_Ctype_GList, e
 	C.gnet_snmp_set_retries(session, (_Ctype_guint)(qp.Timeout))
 
 	return session, vbl, nil
+}
+
+// parsePath parses an SNMP URI in RFC 4088 format.
+func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
+	var gerror *C.GError
+	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
+	if rv == 0 {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
+	}
+	return vbl, uritype, nil
+}
+
+// parseURI parses an SNMP URI into fields.
+func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
+	curi := (*C.gchar)(C.CString(uri))
+	defer C.free(unsafe.Pointer(curi))
+
+	var gerror *C.GError
+	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
+	if gerror != nil {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
+		return nil, fmt.Errorf("%s: parseURI(): %s", libname(), err_string)
+	}
+	if parsed_uri == nil {
+		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
+	}
+	return parsed_uri, nil
 }
 
 // PartitionAllP - returns true when dividing a slice into
