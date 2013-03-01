@@ -63,12 +63,6 @@ const MAX_URI_COUNT = 50
 
 var Debug bool // global debugging flag
 
-// A single result, used as an Item in the llrb tree
-type QueryResult struct {
-	Oid   string
-	Value Varbinder
-}
-
 // Struct of parameters to pass to Query
 type QueryParams struct {
 	Uri     string
@@ -86,21 +80,10 @@ type QueryParams struct {
 	Tree *llrb.Tree
 }
 
-func NewDefaultParams(uri string) *QueryParams {
-	return &QueryParams{
-		Uri:     uri,
-		Version: GNET_SNMP_V2C,
-		Timeout: 200,
-		Retries: 3,
-		// From O'Reilly "Essential SNMP": "nonrep is the number of scalar
-		// objects that this command will return; rep is the number of
-		// instances of each nonscalar object that the command will return. If
-		// you omit this option the default values of nonrep and rep, 1 and
-		// 100, respectively, will be used." So use these defaults for the
-		// moment.
-		Nonrep: 1,
-		Maxrep: 100,
-	}
+// A single result, used as an Item in the llrb tree
+type QueryResult struct {
+	Oid   string
+	Value Varbinder
 }
 
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
@@ -150,152 +133,7 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	return convertResults(params, vbl_results), nil
 }
 
-// Dump is a convenience function for printing the results of a Query.
-func Dump(results *llrb.Tree) {
-	if results == nil {
-		fmt.Println("Dump: results are NIL")
-		return
-	}
-	fmt.Println("Dump:")
-	ch := results.IterAscend()
-	for {
-		r := <-ch
-		if r == nil {
-			break
-		}
-		result := r.(QueryResult)
-		fmt.Printf("oid, type: %s, %T\n", result.Oid, result.Value)
-		fmt.Printf("INTEGER: %d\n", result.Value.Integer())
-		fmt.Printf("STRING : %s\n", result.Value)
-		fmt.Println()
-	}
-}
-
-// parseURI parses an SNMP URI into fields.
-//
-// The generic URI parsing is done by gnet_uri_new(), and the SNMP specific
-// portions by gnet_snmp_parse_uri(). Only basic URI validation is done here,
-// more is done by parsePath()
-//
-// Example:
-//
-//    uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
-//    parsed_uri, err := gsnmpgo.parseURI(uri)
-//    if err != nil {
-//    	fmt.Println(err)
-//    	os.Exit(1)
-//    }
-//    fmt.Println("parseURI():", parsed_uri)
-func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
-	curi := (*C.gchar)(C.CString(uri))
-	defer C.free(unsafe.Pointer(curi))
-
-	var gerror *C.GError
-	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
-	if parsed_uri == nil {
-		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
-	}
-	return parsed_uri, nil
-}
-
-// parsePath parses an SNMP URI.
-//
-// The uritype will default to GNET_SNMP_URI_GET. If the uri ends in:
-//
-// '*' the uritype will be GNET_SNMP_URI_WALK
-//
-// '+' the uritype will be GNET_SNMP_URI_NEXT
-//
-// See RFC 4088 "Uniform Resource Identifier (URI) Scheme for the Simple
-// Network Management Protocol (SNMP)" for further documentation.
-func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
-	var gerror *C.GError
-	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
-	if rv == 0 {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
-	}
-	return vbl, uritype, nil
-}
-
-// uriDelete frees the memory used by a parsed_uri.
-//
-// A defered call to uriDelete should be made after parsePath().
-func uriDelete(parsed_uri *_Ctype_GURI) {
-	C.gnet_uri_delete(parsed_uri)
-}
-
-// vblDelete frees the memory used by a var bind list.
-//
-// A deferred call to vblDelete should be made after call to
-// gnet_snmp_sync_get (or similar).
-func vblDelete(vbl *_Ctype_GList) {
-	C.vbl_delete(vbl)
-}
-
-// newUri creates a session from a parsed uri.
-func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
-
-	var gerror *C.GError
-	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
-
-	// error handling
-	if gerror != nil {
-		err_string := C.GoString((*_Ctype_char)(gerror.message))
-		C.g_clear_error(&gerror)
-		return session, fmt.Errorf("%s: newUri(): %s", libname(), err_string)
-	}
-	if session == nil {
-		return session, fmt.Errorf("%s: newUri(): unable to create session", libname())
-	}
-
-	if params.Version == GNET_SNMP_V1 { // default in library is v2c
-		C.gnet_snmp_set_version(session, 0)
-	}
-	C.gnet_snmp_set_timeout(session, (_Ctype_guint)(params.Timeout))
-	C.gnet_snmp_set_retries(session, (_Ctype_guint)(params.Timeout))
-
-	return session, nil
-}
-
-// Do an gsnmp library sync_* query
-//
-// Results are returned in C form, use convertResults() to convert to a Go struct.
-func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType,
-	version SnmpVersion) (*_Ctype_GList, error) {
-	var gerror *C.GError
-	var out *_Ctype_GList
-
-	if Debug {
-		applog.Debugf("Starting a %s", uritype)
-	}
-	switch UriType(uritype) {
-	case GNET_SNMP_URI_GET:
-		out = C.gnet_snmp_sync_get(session, vbl, &gerror)
-	case GNET_SNMP_URI_NEXT:
-		out = C.gnet_snmp_sync_getnext(session, vbl, &gerror)
-	case GNET_SNMP_URI_WALK:
-		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
-		/* TODO gnet_snmp_sync_walk is just a series of 'getnexts'
-		if version == GNET_SNMP_V1 {
-			out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
-		} else {
-			// do a proper bulkwalk
-		}
-		*/
-	default:
-		return nil, fmt.Errorf("%s: querySync(): unknown uritype", libname())
-	}
-
-	/*
-		Originally error handling was done at this point, like
-		gsnmp-0.3.0/examples/gsnmp-get.c. However in production too many results
-		were being discarded. Hence just return out, and convertResults() will
-		convert any errors in out to nil values.
-	*/
-
-	return out, nil
-}
+// ------------------- other functions in alphabetical order --------------------
 
 // convertResults converts C results to a Go struct.
 func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
@@ -378,9 +216,25 @@ func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree)
 	panic(fmt.Sprintf("%s: convertResults(): fell out of for loop", libname()))
 }
 
-// libname returns the name of this library, for generating error messages.
-func libname() string {
-	return "gsnmpgo"
+// Dump is a convenience function for printing the results of a Query.
+func Dump(results *llrb.Tree) {
+	if results == nil {
+		fmt.Println("Dump: results are NIL")
+		return
+	}
+	fmt.Println("Dump:")
+	ch := results.IterAscend()
+	for {
+		r := <-ch
+		if r == nil {
+			break
+		}
+		result := r.(QueryResult)
+		fmt.Printf("oid, type: %s, %T\n", result.Oid, result.Value)
+		fmt.Printf("INTEGER: %d\n", result.Value.Integer())
+		fmt.Printf("STRING : %s\n", result.Value)
+		fmt.Println()
+	}
 }
 
 // LessOID is the LessFunc for GoLLRB
@@ -417,6 +271,101 @@ func LessOID(astruct, bstruct interface{}) bool {
 	return true
 }
 
+// libname returns the name of this library, for generating error messages.
+func libname() string {
+	return "gsnmpgo"
+}
+
+// NewDefaultParams returns QueryParams with sensible default values
+func NewDefaultParams(uri string) *QueryParams {
+	return &QueryParams{
+		Uri:     uri,
+		Version: GNET_SNMP_V2C,
+		Timeout: 200,
+		Retries: 3,
+		// From O'Reilly "Essential SNMP": "nonrep is the number of scalar
+		// objects that this command will return; rep is the number of
+		// instances of each nonscalar object that the command will return. If
+		// you omit this option the default values of nonrep and rep, 1 and
+		// 100, respectively, will be used." So use these defaults for the
+		// moment.
+		Nonrep: 1,
+		Maxrep: 100,
+	}
+}
+
+// newUri creates a session from a parsed uri.
+func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
+
+	var gerror *C.GError
+	session = C.gnet_snmp_new_uri(parsed_uri, &gerror)
+
+	// error handling
+	if gerror != nil {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
+		return session, fmt.Errorf("%s: newUri(): %s", libname(), err_string)
+	}
+	if session == nil {
+		return session, fmt.Errorf("%s: newUri(): unable to create session", libname())
+	}
+
+	if params.Version == GNET_SNMP_V1 { // default in library is v2c
+		C.gnet_snmp_set_version(session, 0)
+	}
+	C.gnet_snmp_set_timeout(session, (_Ctype_guint)(params.Timeout))
+	C.gnet_snmp_set_retries(session, (_Ctype_guint)(params.Timeout))
+
+	return session, nil
+}
+
+// parsePath parses an SNMP URI.
+//
+// The uritype will default to GNET_SNMP_URI_GET. If the uri ends in:
+//
+// '*' the uritype will be GNET_SNMP_URI_WALK
+//
+// '+' the uritype will be GNET_SNMP_URI_NEXT
+//
+// See RFC 4088 "Uniform Resource Identifier (URI) Scheme for the Simple
+// Network Management Protocol (SNMP)" for further documentation.
+func parsePath(uri string, parsed_uri *_Ctype_GURI) (vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType, err error) {
+	var gerror *C.GError
+	rv := C.gnet_snmp_parse_path(parsed_uri.path, &vbl, &uritype, &gerror)
+	if rv == 0 {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		return vbl, uritype, fmt.Errorf("%s: parsePath(): %s: <%s>", libname(), err_string, uri)
+	}
+	return vbl, uritype, nil
+}
+
+// parseURI parses an SNMP URI into fields.
+//
+// The generic URI parsing is done by gnet_uri_new(), and the SNMP specific
+// portions by gnet_snmp_parse_uri(). Only basic URI validation is done here,
+// more is done by parsePath()
+//
+// Example:
+//
+//    uri := `snmp://public@192.168.1.10//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
+//    parsed_uri, err := gsnmpgo.parseURI(uri)
+//    if err != nil {
+//    	fmt.Println(err)
+//    	os.Exit(1)
+//    }
+//    fmt.Println("parseURI():", parsed_uri)
+func parseURI(uri string) (parsed_uri *_Ctype_GURI, err error) {
+	curi := (*C.gchar)(C.CString(uri))
+	defer C.free(unsafe.Pointer(curi))
+
+	var gerror *C.GError
+	parsed_uri = C.gnet_snmp_parse_uri(curi, &gerror)
+	if parsed_uri == nil {
+		return nil, fmt.Errorf("%s: parseURI(): invalid snmp uri: %s", libname(), uri)
+	}
+	return parsed_uri, nil
+}
+
 // PartitionAllP - returns true when dividing a slice into
 // partition_size lengths, including last partition which may be smaller
 // than partition_size.
@@ -447,6 +396,45 @@ func PartitionAllP(current_position, partition_size, slice_length int) bool {
 	return false
 }
 
+// querySync - do an gsnmp library sync_* query
+//
+// Results are returned in C form, use convertResults() to convert to a Go struct.
+func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType,
+	version SnmpVersion) (*_Ctype_GList, error) {
+	var gerror *C.GError
+	var out *_Ctype_GList
+
+	if Debug {
+		applog.Debugf("Starting a %s", uritype)
+	}
+	switch UriType(uritype) {
+	case GNET_SNMP_URI_GET:
+		out = C.gnet_snmp_sync_get(session, vbl, &gerror)
+	case GNET_SNMP_URI_NEXT:
+		out = C.gnet_snmp_sync_getnext(session, vbl, &gerror)
+	case GNET_SNMP_URI_WALK:
+		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
+		/* TODO gnet_snmp_sync_walk is just a series of 'getnexts'
+		if version == GNET_SNMP_V1 {
+			out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
+		} else {
+			// do a proper bulkwalk
+		}
+		*/
+	default:
+		return nil, fmt.Errorf("%s: querySync(): unknown uritype", libname())
+	}
+
+	/*
+		Originally error handling was done at this point, like
+		gsnmp-0.3.0/examples/gsnmp-get.c. However in production too many results
+		were being discarded. Hence just return out, and convertResults() will
+		convert any errors in out to nil values.
+	*/
+
+	return out, nil
+}
+
 // uriCount returns a count of the number of uri's in the path
 func uriCount(path string) int {
 	left_paren := strings.Index(path, "(")
@@ -464,4 +452,19 @@ func uriCountMaxed(path string, max int) (err error) {
 		return fmt.Errorf("number of uris is greater than max (%d/%d) in path %s", uri_count, max, path)
 	}
 	return nil
+}
+
+// uriDelete frees the memory used by a parsed_uri.
+//
+// A defered call to uriDelete should be made after parsePath().
+func uriDelete(parsed_uri *_Ctype_GURI) {
+	C.gnet_uri_delete(parsed_uri)
+}
+
+// vblDelete frees the memory used by a var bind list.
+//
+// A deferred call to vblDelete should be made after call to
+// gnet_snmp_sync_get (or similar).
+func vblDelete(vbl *_Ctype_GList) {
+	C.vbl_delete(vbl)
 }
