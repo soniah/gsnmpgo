@@ -30,6 +30,6 @@ j_sync_send(GNetSnmp *session, GNetSnmpPduType type,
             GList *objs, guint32 arg1, guint32 arg2, GError **error);
 
 void
-j_vbl_delete(GList *list);
+vbl_delete(GList *list);
 
 #endif //__C_BRIDGE_H__

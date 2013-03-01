@@ -60,7 +60,7 @@ j_sync_send(GNetSnmp *session, GNetSnmpPduType type,
 
 // vbl_delete is wrapper for freeing a var bind list
 void
-j_vbl_delete(GList *list) {
+vbl_delete(GList *list) {
     g_list_foreach(list, (GFunc) gnet_snmp_varbind_delete, NULL);
     g_list_free(list);
 }
