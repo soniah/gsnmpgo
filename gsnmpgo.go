@@ -61,7 +61,7 @@ import (
 )
 
 // the maximum number of paths that can be in a single uri
-const MAX_URI_COUNT = 50
+// const MAX_URI_COUNT = 50
 
 var Debug bool // global debugging flag
 
@@ -99,7 +99,42 @@ type QueryResult struct {
 	Value Varbinder
 }
 
+func (qp *QueryParams) GetMany() error {
+	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
+	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
+
+	// TODO parseUri, create session, etc...
+
+	var oids []string
+	for count, oid := range qp.Oids {
+		oids = append(oids, oid)
+		// if PartitionAllP(count, MAX_URI_COUNT, len(ss.oids)) {
+		if PartitionAllP(count, 2, len(qp.Oids)) {
+			qp.send <- oids
+			oids = nil // "truncate" oids
+		}
+	}
+
+	qp.cycle = time.After(500 * time.Microsecond)
+	for {
+		select {
+
+		case sendoids := <-qp.send:
+			fmt.Printf("send: got sendoids |%s|\n", sendoids)
+
+		case results := <-qp.recv:
+			fmt.Printf("recv: got results |%s|\n", results)
+
+		case <-qp.cycle:
+			return nil
+
+		}
+	}
+	return nil
+}
+
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
+/*
 func Query(params *QueryParams) (results *llrb.Tree, err error) {
 
 	parsed_uri, err := parseURI(params.Uri)
@@ -128,12 +163,10 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	}
 
 	session, err := newUri(params, parsed_uri)
-	/*
-		causing <undefined symbol: gnet_snmp_taddress_get_short_name>
-		if Debug {
-			applog.Warningf("session: %s\n\n", session)
-		}
-	*/
+	// causing <undefined symbol: gnet_snmp_taddress_get_short_name>
+	// if Debug {
+	// 	applog.Warningf("session: %s\n\n", session)
+	// }
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +178,19 @@ func Query(params *QueryParams) (results *llrb.Tree, err error) {
 	}
 	return convertResults(params, vbl_results), nil
 }
+*/
 
 // ------------------- other functions in alphabetical order --------------------
+
+// BuildUri builds a URI string from a slice of oids.
+//
+// eg snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
+func (qp QueryParams) BuildUri(oids []string) (string, error) {
+	if len(oids) == 0 {
+		return "", fmt.Errorf("BuildUri() requires at least one oid")
+	}
+	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
+}
 
 // convertResults converts C results to a Go struct.
 func convertResults(params *QueryParams, out *_Ctype_GList) (results *llrb.Tree) {
@@ -250,40 +294,6 @@ func Dump(results *llrb.Tree) {
 	}
 }
 
-func (qp *QueryParams) GetMany() error {
-	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
-	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
-
-	// TODO parseUri, create session, etc...
-
-	var oids []string
-	for count, oid := range qp.Oids {
-		oids = append(oids, oid)
-		// if PartitionAllP(count, MAX_URI_COUNT, len(ss.oids)) {
-		if PartitionAllP(count, 2, len(qp.Oids)) {
-			qp.send <- oids
-			oids = nil // "truncate" oids
-		}
-	}
-
-	qp.cycle = time.After(500 * time.Microsecond)
-	for {
-		select {
-
-		case sendoids := <-qp.send:
-			fmt.Printf("send: got sendoids |%s|\n", sendoids)
-
-		case results := <-qp.recv:
-			fmt.Printf("recv: got results |%s|\n", results)
-
-		case <-qp.cycle:
-			return nil
-
-		}
-	}
-	return nil
-}
-
 // LessOID is the LessFunc for GoLLRB
 //
 // It returns true if oid a is less than oid b.
@@ -324,6 +334,7 @@ func libname() string {
 }
 
 // NewDefaultParams returns QueryParams with sensible default values
+/*
 func NewDefaultParams(uri string) *QueryParams {
 	return &QueryParams{
 		Uri:     uri,
@@ -340,8 +351,30 @@ func NewDefaultParams(uri string) *QueryParams {
 		Maxrep: 100,
 	}
 }
+*/
+
+func (qp QueryParams) NewSession(uri string) (*_Ctype_GNetSnmp, error) {
+	c_uri := C.CString(uri)
+	defer C.free(unsafe.Pointer(c_uri))
+	var gerror *C.GError
+	defer C.free(unsafe.Pointer(gerror)) // redundant? g_clear_error()
+
+	session := C.gnet_snmp_new_string((*_Ctype_gchar)(c_uri), &gerror)
+
+	if gerror != nil {
+		err_string := C.GoString((*_Ctype_char)(gerror.message))
+		C.g_clear_error(&gerror)
+		return nil, fmt.Errorf("%s: NewSession(): %s", libname(), err_string)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("%s: NewSession(): unable to create session", libname())
+	}
+
+	return session, nil
+}
 
 // newUri creates a session from a parsed uri.
+/*
 func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetSnmp, err error) {
 
 	var gerror *C.GError
@@ -365,6 +398,7 @@ func newUri(params *QueryParams, parsed_uri *_Ctype_GURI) (session *_Ctype_GNetS
 
 	return session, nil
 }
+*/
 
 // parsePath parses an SNMP URI.
 //
@@ -446,6 +480,7 @@ func PartitionAllP(current_position, partition_size, slice_length int) bool {
 // querySync - do an gsnmp library sync_* query
 //
 // Results are returned in C form, use convertResults() to convert to a Go struct.
+/*
 func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetSnmpUriType,
 	version SnmpVersion) (*_Ctype_GList, error) {
 	var gerror *C.GError
@@ -461,28 +496,27 @@ func querySync(session *_Ctype_GNetSnmp, vbl *_Ctype_GList, uritype _Ctype_GNetS
 		out = C.gnet_snmp_sync_getnext(session, vbl, &gerror)
 	case GNET_SNMP_URI_WALK:
 		out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
-		/* TODO gnet_snmp_sync_walk is just a series of 'getnexts'
-		if version == GNET_SNMP_V1 {
-			out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
-		} else {
-			// do a proper bulkwalk
-		}
-		*/
+		// TODO gnet_snmp_sync_walk is just a series of 'getnexts'
+		// if version == GNET_SNMP_V1 {
+		// 	out = C.gnet_snmp_sync_walk(session, vbl, &gerror)
+		// } else {
+		// 	// do a proper bulkwalk
+		// }
 	default:
 		return nil, fmt.Errorf("%s: querySync(): unknown uritype", libname())
 	}
 
-	/*
-		Originally error handling was done at this point, like
-		gsnmp-0.3.0/examples/gsnmp-get.c. However in production too many results
-		were being discarded. Hence just return out, and convertResults() will
-		convert any errors in out to nil values.
-	*/
+	// Originally error handling was done at this point, like
+	// gsnmp-0.3.0/examples/gsnmp-get.c. However in production too many results
+	// were being discarded. Hence just return out, and convertResults() will
+	// convert any errors in out to nil values.
 
 	return out, nil
 }
+*/
 
 // uriCount returns a count of the number of uri's in the path
+/*
 func uriCount(path string) int {
 	left_paren := strings.Index(path, "(")
 	right_paren := strings.Index(path, ")")
@@ -492,36 +526,34 @@ func uriCount(path string) int {
 	uris := path[left_paren+1 : right_paren]
 	return len(strings.Split(uris, ","))
 }
+*/
 
 // uriCountMaxed returns an error if there are more uri's in path than max
+/*
 func uriCountMaxed(path string, max int) (err error) {
 	if uri_count := uriCount(path); uri_count > max {
 		return fmt.Errorf("number of uris is greater than max (%d/%d) in path %s", uri_count, max, path)
 	}
 	return nil
 }
+*/
 
 // uridelete frees the memory used by a parsed_uri.
 //
 // a defered call to uridelete should be made after parsepath().
+/*
 func uridelete(parsed_uri *_ctype_guri) {
 	c.gnet_uri_delete(parsed_uri)
 }
+*/
 
 // vbldelete frees the memory used by a var bind list.
 //
 // a deferred call to vbldelete should be made after call to
 // gnet_snmp_sync_get (or similar).
+/*
 func vblDelete(vbl *_Ctype_GList) {
 	C.vbl_delete(vbl)
 }
+*/
 
-// BuildUri builds a URI string from a slice of oids.
-//
-// eg snmp://public@127.0.0.1:161//(1.3.6.1.2.1.1.1.0,1.3.6.1.2.1.1.2.0)`
-func (qp QueryParams) BuildUri(oids []string) (string, error) {
-	if len(oids) == 0 {
-		return "", fmt.Errorf("BuildUri() requires at least one oid")
-	}
-	return fmt.Sprintf("snmp://%s@%s:%d//(%s)", qp.Community, qp.IP.String(), qp.Port, strings.Join(oids, ",")), nil
-}
