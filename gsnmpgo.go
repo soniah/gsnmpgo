@@ -55,6 +55,7 @@ import (
 	"github.com/petar/GoLLRB/llrb"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -65,7 +66,9 @@ var Debug bool // global debugging flag
 
 // Struct of parameters to pass to Query
 type QueryParams struct {
-	Uri     string
+	Uri string
+	// an array of Oids to retrieve, for GetMany()
+	Oids    []string
 	Version SnmpVersion
 	Timeout int // timeout in milliseconds
 	Retries int // number of retries
@@ -78,6 +81,10 @@ type QueryParams struct {
 	// if Tree is non-nil, it will be used for appending Query()
 	// results eg when doing two GETs in a row
 	Tree *llrb.Tree
+	// internal
+	send  chan ([]string)
+	recv  chan (string)
+	cycle <-chan time.Time
 }
 
 // A single result, used as an Item in the llrb tree
@@ -235,6 +242,40 @@ func Dump(results *llrb.Tree) {
 		fmt.Printf("STRING : %s\n", result.Value)
 		fmt.Println()
 	}
+}
+
+func (qp *QueryParams) GetMany() error {
+	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
+	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
+
+	// TODO parseUri, create session, etc...
+
+	var oids []string
+	for count, oid := range qp.Oids {
+		oids = append(oids, oid)
+		// if PartitionAllP(count, MAX_URI_COUNT, len(ss.oids)) {
+		if PartitionAllP(count, 2, len(qp.Oids)) {
+			qp.send <- oids
+			oids = nil // "truncate" oids
+		}
+	}
+
+	qp.cycle = time.After(500 * time.Microsecond)
+	for {
+		select {
+
+		case sendoids := <-qp.send:
+			fmt.Printf("send: got sendoids |%s|\n", sendoids)
+
+		case results := <-qp.recv:
+			fmt.Printf("recv: got results |%s|\n", results)
+
+		case <-qp.cycle:
+			return nil
+
+		}
+	}
+	return nil
 }
 
 // LessOID is the LessFunc for GoLLRB
@@ -454,16 +495,16 @@ func uriCountMaxed(path string, max int) (err error) {
 	return nil
 }
 
-// uriDelete frees the memory used by a parsed_uri.
+// uridelete frees the memory used by a parsed_uri.
 //
-// A defered call to uriDelete should be made after parsePath().
-func uriDelete(parsed_uri *_Ctype_GURI) {
-	C.gnet_uri_delete(parsed_uri)
+// a defered call to uridelete should be made after parsepath().
+func uridelete(parsed_uri *_ctype_guri) {
+	c.gnet_uri_delete(parsed_uri)
 }
 
-// vblDelete frees the memory used by a var bind list.
+// vbldelete frees the memory used by a var bind list.
 //
-// A deferred call to vblDelete should be made after call to
+// a deferred call to vbldelete should be made after call to
 // gnet_snmp_sync_get (or similar).
 func vblDelete(vbl *_Ctype_GList) {
 	C.vbl_delete(vbl)
