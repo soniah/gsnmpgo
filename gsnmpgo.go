@@ -56,6 +56,13 @@ type QueryParams struct {
 	// if Tree is non-nil, it will be used for appending Query()
 	// results eg when doing two GETs in a row
 	Tree *llrb.Tree
+	//
+	// GetBulk()
+	//
+	Community string
+	IP        net.IP
+	Port      uint16
+	Oids      []string
 }
 
 // A single result, used as an Item in the llrb tree
