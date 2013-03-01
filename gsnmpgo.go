@@ -77,6 +77,7 @@ type QueryResult struct {
 	Value Varbinder
 }
 
+// GetMany does SNMP Get's on a slice of Oids.
 func (qp *QueryParams) GetMany() error {
 	qp.send = make(chan []string, 50) // 50 arbitrary large number for buffer size
 	qp.recv = make(chan string, 50)   // 50 arbitrary large number for buffer size
