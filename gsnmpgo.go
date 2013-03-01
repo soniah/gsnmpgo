@@ -31,6 +31,7 @@ import (
 	"code.google.com/p/tcgl/applog"
 	"fmt"
 	"github.com/petar/GoLLRB/llrb"
+	"net"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -69,6 +70,26 @@ type QueryParams struct {
 type QueryResult struct {
 	Oid   string
 	Value Varbinder
+}
+
+func (qp *QueryParams) GetBulk() (results *llrb.Tree, err error) {
+	uri := fmt.Sprintf("snmp://%s@%s:%d//(1.3.6.1)", qp.Community, qp.IP.String(), qp.Port)
+
+	session, vbl, err := qp.NewSession(uri)
+	if err != nil {
+		return nil, err
+	}
+	defer C.free(unsafe.Pointer(session))
+	defer C.vbl_delete(vbl)
+	if Debug {
+		applog.Debugf("dummy: session: %v", session)
+		applog.Debugf("dummy: vbl: %v", vbl)
+	}
+
+	var gerror *C.GError
+	out := C.gnet_snmp_sync_getbulk(session, vbl, 0, 10, &gerror)
+
+	return convertResults(qp, out), nil
 }
 
 // Query takes a URI in RFC 4088 format, does an SNMP query and returns the results.
