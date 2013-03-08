@@ -73,7 +73,7 @@ type QueryResult struct {
 }
 
 func (qp *QueryParams) GetBulk() (results *llrb.Tree, err error) {
-	uri := fmt.Sprintf("snmp://%s@%s:%d//(1.3.6.1)", qp.Community, qp.IP.String(), qp.Port)
+	uri := fmt.Sprintf("snmp://%s@%s:%d//(1.3.6.1.2)", qp.Community, qp.IP.String(), qp.Port)
 
 	session, vbl, err := qp.NewSession(uri)
 	if err != nil {
