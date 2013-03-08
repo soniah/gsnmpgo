@@ -1,6 +1,15 @@
 gsnmpgo
 ======
 
+Update 8/Mar/13
+---------------
+
+Work on gsnmpgo has halted. Making the gsnmp C library multithreaded was
+proving too time consuming. Use http://github.com/soniah/gosnmp instead.
+
+About
+-----
+
 gsnmpgo is an snmp library for Go; it uses Go/CGo to wrap gsnmp.
 
 gsnmpgo is pre 1.0, therefore API's may change, and tests are minimal.
