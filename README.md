@@ -7,6 +7,22 @@ Update 8/Mar/13
 Work on gsnmpgo has halted. Making the gsnmp C library multithreaded was
 proving too time consuming. Use http://github.com/soniah/gosnmp instead.
 
+Update 4/Dec/13
+---------------
+
+Geert-Johan Riemer commented:
+
+I saw your notice on gsnmpgo "Threading: either gsnmp isn't totally thread
+safe, or I'm making errors with my C calls from Go (more likely). I'm getting
+aborts with this message:"
+
+I think this might be solved by locking the requesting goroutine to it's thread
+using runtime.LockOSThread (http://golang.org/pkg/runtime/#LockOSThread). And
+make sure requests are always made from that specific goroutine.
+
+(I currently don't have time to work on gsnmpgo, but I thought I'd add this
+comment for future reference. Sonia.)
+
 About
 -----
 
